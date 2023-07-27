@@ -26,11 +26,15 @@ module top ();
 	initial clk = 0;
 	always #1 clk = ~clk;
 
+  always @ (posedge ap_state_irq) begin
+    ap_mode <= 0;
+    #5 $finish;
+  end
+
 	initial begin
 		#0.01 begin
 			rst <= 1;
 			clk <= 0;
-			rst <= 0;
 			ap_mode <= 0;
 			cmd <= 0;
 			write_en <= 0;
@@ -38,28 +42,28 @@ module top ();
 			data <= 0;
 			addr <= 0;
 		end
-		#800 rst <= 0;//release reset
+		#10 rst <= 0;//release reset
 		/* Testing Memory features */
-    #900 begin
-			data <= 1;
-			sel_col <= 0; // col_a
-			write_en <= 1;
-			addr <= 0;
+    #15 begin
+			//data <= 1;
+			//sel_col <= 0; // col_a
+			//write_en <= 1;
+			//addr <= 0;
 		end
-		#905 begin
-			data <= 1;
-			sel_col <= 1; // col_a
-			write_en <= 1;
-			addr <= 0;
+		#20 begin
+			//data <= 1;
+			//sel_col <= 1; // col_a
+			//write_en <= 1;
+			//addr <= 0;
 		end
-		#910 begin
-			data <= 1;
-			sel_col <= 1; // col_a
-			write_en <= 0;
-			addr <= 0;
+		#25 begin
+			//data <= 1;
+			//sel_col <= 1; // col_a
+			//write_en <= 0;
+			//addr <= 0;
 		end	
     /* Testing Associative Processing */
-    #910 begin
+    #30 begin
 			ap_mode <= 1;
 		end	
 	end 

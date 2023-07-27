@@ -5,4 +5,3 @@ xrun -64 -access +rwc -sv tb/*.sv rtl/*.v -gui -verbose -debug -defparam top.ap.
 #	-defparam AP.DATA_INIT_B=$2 
 #	+define+RANDOMIZE_MEM_INIT \
 #	-defparam top.th.mem.sram.mem.mem_ext.TEST_FILE_PARAM=$1
-

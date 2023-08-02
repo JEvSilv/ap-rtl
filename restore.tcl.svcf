@@ -1,0 +1,361 @@
+# SimVision Command Script (Qui Jul 27 13:37:23 -03 2023)
+#
+# Version 19.11.a001
+#
+# You can restore this configuration with:
+#
+#      xrun -64 -access +rwc -sv tb/top.sv rtl/ap.v -verbose -debug -defparam top.ap.COL_DATA_A=utils/col_data_a.hex -defparam top.ap.COL_DATA_B=utils/col_data_b.hex -input restore.tcl
+#
+
+
+#
+# Preferences
+#
+preferences set plugin-enable-svdatabrowser-new 1
+preferences set toolbar-Standard-Console {
+  usual
+  position -pos 1
+}
+preferences set toolbar-Search-Console {
+  usual
+  position -pos 2
+}
+preferences set toolbar-Standard-WaveWindow {
+  usual
+  position -pos 1
+}
+preferences set plugin-enable-groupscope 0
+preferences set sb-display-values 1
+preferences set plugin-enable-interleaveandcompare 0
+preferences set plugin-enable-waveformfrequencyplot 0
+preferences set dont-show-read-access-warning 1
+
+#
+# Simulator
+#
+database require simulator -hints {
+	simulator "xrun -64 -access +rwc -sv tb/top.sv rtl/ap.v -gui -verbose -debug -defparam top.ap.COL_DATA_A=utils/col_data_a.hex -defparam top.ap.COL_DATA_B=utils/col_data_b.hex -input restore.tcl"
+}
+#
+# Groups
+#
+catch {group new -name Memory -overlay 0}
+catch {group new -name DATA0_1 -overlay 0}
+catch {group new -name Counters -overlay 0}
+catch {group new -name {Special regs} -overlay 0}
+catch {group new -name fsm -overlay 0}
+group using Memory
+group set -overlay 0
+group set -comment {}
+group clear 0 end
+
+group insert \
+    [subst  {simulator::[format {top.ap.tags[0:1023]}]} ] \
+    [subst  {simulator::[format {top.ap.col_c[0:1023]}]} ] \
+    [subst  {simulator::[format {top.ap.col_a[0:1023]}]} ] \
+    [subst  {simulator::[format {top.ap.col_b[0:1023]}]} ]
+group using DATA0_1
+group set -overlay 0
+group set -comment {}
+group clear 0 end
+
+group insert \
+    [subst  {simulator::[format {top.ap.tags[1]}]} ] \
+    [subst  {simulator::[format {top.ap.tags[0]}]} ] \
+    [subst  {simulator::[format {top.ap.col_b[1]}]} ] \
+    [subst  {simulator::[format {top.ap.col_a[1]}]} ] \
+    [subst  {simulator::[format {top.ap.col_b[0]}]} ] \
+    [subst  {simulator::[format {top.ap.col_a[0]}]} ]
+group using Counters
+group set -overlay 0
+group set -comment {}
+group clear 0 end
+
+group insert \
+    [subst  {simulator::[format {top.ap.pass_cnt[1:0]}]} ] \
+    [subst  {simulator::[format {top.ap.bit_cnt[2:0]}]} ]
+group using {Special regs}
+group set -overlay 0
+group set -comment {}
+group clear 0 end
+
+group insert \
+    [subst  {simulator::[format {top.ap.or_lut[0:3]}]} ] \
+    [subst  {simulator::[format {top.ap.mask_b[7:0]}]} ] \
+    [subst  {simulator::[format {top.ap.mask_a[7:0]}]} ] \
+    [subst  {simulator::[format {top.ap.key_b[7:0]}]} ] \
+    [subst  {simulator::[format {top.ap.key_a[7:0]}]} ]
+group using fsm
+group set -overlay 0
+group set -comment {}
+group clear 0 end
+
+group insert \
+    [subst  {simulator::[format {top.ap.WRITE}]} ] \
+    [subst  {simulator::[format {top.ap.DONE}]} ] \
+    [subst  {simulator::[format {top.ap.COMPARE}]} ] \
+    [subst  {simulator::[format {top.ap.INIT}]} ] \
+    [subst  {simulator::[format {top.ap.next_state[1:0]}]} ] \
+    [subst  {simulator::[format {top.ap.ap_state[1:0]}]} ]
+
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+#
+# Design Browser windows
+#
+if {[catch {window new WatchList -name "Design Browser 1" -geometry 1920x977+-1+27}] != ""} {
+    window geometry "Design Browser 1" 1920x977+-1+27
+}
+window target "Design Browser 1" on
+browser using {Design Browser 1}
+browser set -scope [subst  {simulator::[format {top.ap}]} ]
+browser set \
+    -signalsort name
+browser yview see [subst  {simulator::[format {top.ap}]} ]
+browser timecontrol set -lock 0
+
+#
+# Waveform windows
+#
+if {[catch {window new WaveWindow -name "Waveform 1" -geometry 1920x977+-1+27}] != ""} {
+    window geometry "Waveform 1" 1920x977+-1+27
+}
+window target "Waveform 1" on
+waveform using {Waveform 1}
+waveform sidebar select designbrowser
+waveform set \
+    -primarycursor TimeA \
+    -signalnames name \
+    -signalwidth 175 \
+    -units ns \
+    -valuewidth 75
+waveform baseline set -time 223ns
+
+set id [waveform add -signals [subst  {
+	{simulator::[format {top.ap.COL_DATA_A}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{simulator::[format {top.ap.COL_DATA_B}]}
+	} ]]
+waveform hierarchy collapse $id
+set id [waveform add -signals [subst  {
+	{simulator::[format {top.ap.cmd[2:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{simulator::[format {top.ap.ap_state_irq}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{simulator::[format {top.ap.ap_mode}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{simulator::[format {top.ap.clk}]}
+	} ]]
+waveform format $id -color #0099ff -namecolor #0099ff
+
+set groupId0 [waveform add -groups {{Special regs}}]
+
+
+set groupId0 [waveform add -groups fsm]
+set gpGlist0 [waveform hierarchy contents $groupId0]
+set gpID0 [lindex $gpGlist0 0]
+foreach {name attrs} [subst  {
+    {simulator::[format {top.ap.WRITE}]} {-radix %d}
+    {simulator::[format {top.ap.DONE}]} {-radix %d}
+    {simulator::[format {top.ap.COMPARE}]} {-radix %d}
+    {simulator::[format {top.ap.INIT}]} {-radix %d}
+    {simulator::[format {top.ap.next_state[1:0]}]} {}
+    {simulator::[format {top.ap.ap_state[1:0]}]} {}
+}] childcmds {
+    {}
+    {}
+    {}
+    {}
+    {}
+    {}
+} {
+    set expected [ join [waveform signals -format fullpath $gpID0] ]
+    if {[string equal $name $expected] || $name == "cdivider"} {
+        if {$attrs != ""} {
+            eval waveform format $gpID0 $attrs
+        }
+        if { $childcmds != ""} {
+            eval $childcmds
+        }
+    }
+    set gpGlist0 [lrange $gpGlist0 1 end]
+    set gpID0 [lindex $gpGlist0 0]
+}
+
+
+set groupId0 [waveform add -groups Counters]
+
+
+set groupId0 [waveform add -groups Memory]
+
+
+set groupId0 [waveform add -groups DATA0_1]
+
+
+waveform xview limits 99ns 125ns
+
+#
+# Waveform Window Links
+#
+
+#
+# Schematic Tracer windows
+#
+if {[catch {window new SchematicWindow -name "Schematic Tracer 1" -geometry 1920x977+-1+27}] != ""} {
+    window geometry "Schematic Tracer 1" 1920x977+-1+27
+}
+window target "Schematic Tracer 1" on
+schematic using "Schematic Tracer 1"
+schematic sidebar select designbrowser
+schematic set \
+    -radix default \
+    -fullsignalname 0 \
+    -showvalue 1 \
+    -showstrength 0 \
+    -showgrey 0 \
+    -tracemode Single \
+    -showrtl 1 \
+    -showcells 1 \
+    -showcellpins 0
+schematic timecontrol set -lock 0
+schematic restore -state {# String saved with Nlview 6.7r2  2017-11-02 bk=1.4313 VDI=40 GEI=35 GUI=TK:8.6 non-TLS,tclcompat
+#  -string
+# non-default properties - (restore without -noprops)
+property attrcolor #40e0d0
+property attrfontsize 10
+property boxmaxwidth 400
+property boxmingap 40
+property boxminheight 40
+property boxminwidth 100
+property buscolor #00ff00
+property createnetattrdsp 2
+property fillcolor1 #000000
+property fillcolor2 #000000
+property gatecellname 1
+property netcolor #00ff00
+property objecthighlight0 #ff00aa
+property objecthighlight1 #ff00aa
+property objecthighlight2 #00ff00
+property objecthighlight3 #ffff00
+property objecthighlight9 #ffffaf
+property pinattrmax 200
+property selectionappearance 2
+property selectioncolor #ffffaf
+property sheetheight 0
+property sheetwidth 0
+property showhierpinname 1
+property showinvisibles 1
+property showmarks 1
+property showpgtype 1
+#
+module new module {}
+load symbol DAI_SOURCE_IN {} DEF port 0 input -loc -14 0 0 0 pinattrdsp @name -cr -2 -5 8i attrdsp @cell -ll -10 16 10 path 0 -6 9 -6 12 -3 12 6 0 6 0 -6 path 12 -3 9 -3 9 -6 path 2 -3 6 -3 path 2 0 10 0 path 2 3 10 3
+load symbol DAI_SOURCE_OUT {} DEF port 0 output -loc 26 0 12 0 pinattrdsp @name -cl 30 -5 8i attrdsp @cell -ll -10 16 10 path 0 -6 9 -6 12 -3 12 6 0 6 0 -6 path 12 -3 9 -3 9 -6 path 2 -3 6 -3 path 2 0 10 0 path 2 3 10 3
+#
+module new root {} -nosplit -symlib /Tools/cadence/XCELIUMAGILE_19.11.001_LNX86/tools/dvgui/ams/symlib/analogLib.sym
+load symbol _internal_expr_0 {} CONCAT pinBus 0 input 4 0 1 2 3 pinBus 1 output 3 4 5 6 fillcolor 1
+load symbol AP {} HIERBOX pin 0 input.left pin 1 input.left pin 2 input.left pin 6 input.left pin 7 input.left pin 34 output.right pinBus 0 input.left 3 3 4 5 pinBus 1 input.left 8 8 9 10 11 12 13 14 15 pinBus 2 input.left 10 16 17 18 19 20 21 22 23 24 25 pinBus 3 output.right 8 26 27 28 29 30 31 32 33 fillcolor 2
+load symbol rtl_Initial_15 {} GEN pin 0 output.right pin 1 output.right pin 2 output.right pin 6 output.right pin 7 output.right pinBus 0 output.right 3 3 4 5 pinBus 1 output.right 8 8 9 10 11 12 13 14 15 pinBus 2 output.right 10 16 17 18 19 20 21 22 23 24 25 fillcolor 1
+load symbol rtl_Always_14 {} GEN pin 0 input.left pin 1 output.right fillcolor 1
+load symbol rtl_Initial_12 {} GEN pin 0 output.right fillcolor 1
+load symbol invif0_3 {} INVIF0 pin 0 input pin 1 output fillcolor 1
+load symbol top {} HIERBOX fillcolor 2
+load inst simulator::top top {} -attr @color #00ffff -pg 1 -lvl 1 -y 50
+load inst simulator::top,Initial_0 rtl_Initial_12 {} -hier simulator::top -attr @name Initial_0 -attr @cell {} -attr @color #00ff00 -pinAttr 0 @name clk= -pinAttr 0 @color #ffffff -pg 1 -lvl 1 -y 320
+load inst simulator::top,Initial_1 rtl_Initial_15 {} -hier simulator::top -attr @name Initial_1 -attr @cell {} -attr @color #00ff00 -pinAttr 0 @name rst= -pinAttr 0 @color #ffffff -pinAttr 1 @name clk= -pinAttr 1 @color #ffffff -pinAttr 2 @name ap_mode= -pinAttr 2 @color #ffffff -pinAttr 6 @name write_en= -pinAttr 6 @color #ffffff -pinAttr 7 @name sel_col= -pinAttr 7 @color #ffffff -pinBusAttr 0 @name {cmd[2:0]=} -pinBusAttr 0 @color #ffffff -pinBusAttr 1 @name {data[7:0]=} -pinBusAttr 1 @color #ffffff -pinBusAttr 2 @name {addr[9:0]=} -pinBusAttr 2 @color #ffffff -pg 1 -lvl 1 -y 130
+load inst simulator::top,Always_0 rtl_Always_14 {} -hier simulator::top -attr @name Always_0 -attr @cell {} -attr @color #00ff00 -pinAttr 0 @name ap_state_irq= -pinAttr 0 @color #ffffff -pinAttr 1 @name ap_mode= -pinAttr 1 @color #ffffff -pg 1 -lvl 3 -y 140
+load inst simulator::top,ap AP {} -hier simulator::top -attr @name ap -attr @color #00ffff -pinAttr 0 @name clk= -pinAttr 0 @color #ffffff -pinAttr 1 @name rst= -pinAttr 1 @color #ffffff -pinAttr 2 @name ap_mode= -pinAttr 2 @color #ffffff -pinAttr 6 @name write_en= -pinAttr 6 @color #ffffff -pinAttr 7 @name sel_col= -pinAttr 7 @color #ffffff -pinAttr 34 @name ap_state_irq= -pinAttr 34 @color #ffffff -pinBusAttr 0 @name {cmd[2:0]=} -pinBusAttr 0 @color #ffffff -pinBusAttr 1 @name {data[7:0]=} -pinBusAttr 1 @color #ffffff -pinBusAttr 2 @name {addr[9:0]=} -pinBusAttr 2 @color #ffffff -pinBusAttr 3 @name {data_out[7:0]=} -pinBusAttr 3 @color #ffffff -hierPinAttr 0 @name clk -hierPinAttr 1 @name rst -hierPinAttr 2 @name ap_mode -hierPinAttr 6 @name write_en -hierPinAttr 7 @name sel_col -hierPinAttr 34 @name ap_state_irq -hierPinBusAttr 0 @name {cmd[2:0]} -hierPinBusAttr 1 @name {data[7:0]} -hierPinBusAttr 2 @name {addr[9:0]} -hierPinBusAttr 3 @name {data_out[7:0]} -pg 1 -lvl 2 -y 50
+load inst simulator::top,ap,_internal_expr_0 _internal_expr_0 {} -hier simulator::top,ap -attr @name {} -attr @cell {} -attr @color #00ffff -pinBusAttr 0 @name {or_lut[0:3]={0,5,6,7}} -pinBusAttr 1 @name {or_lut[pass_cnt]=5} -pg 1 -lvl 1 -y 60
+load inst simulator::top,NOT_0 invif0_3 {} -hier simulator::top -attr @name {} -attr @cell {} -attr @color #00ff00 -pinAttr 0 @name clk= -pinAttr 0 @color #ffffff -pinAttr 1 @name clk= -pinAttr 1 @color #ffffff -pg 1 -lvl 1 -y 240
+load net {simulator::top,ap,or_lut[1]} -attr @name {or_lut[1]} -attr @color #666666.1 -pin simulator::top,ap,_internal_expr_0 1
+load net {simulator::top,data_out[5]} -attr @name {data_out[5]} -attr @color #666666.1 -pin simulator::top,ap 28
+load net simulator::top,rst -attr @name rst -attr @color #666666.1 -pin simulator::top,Initial_1 0 -pin simulator::top,ap 1
+netloc simulator::top,rst 1 1 1 230
+load net simulator::top,ap_mode -attr @name ap_mode -attr @color #666666.1 -pin simulator::top,Always_0 1 -pin simulator::top,Initial_1 2 -pin simulator::top,ap 2
+netloc simulator::top,ap_mode 1 1 3 290 240 NJ 240 1120
+load net {simulator::top,ap,or_lut[pass_cnt][0]} -attr @style dashed -attr @name {or_lut[pass_cnt][0]} -attr @color #666666.1 -pin simulator::top,ap,_internal_expr_0 6
+load net {simulator::top,cmd[1]} -attr @name {cmd[1]} -attr @color #666666.1 -pin simulator::top,Initial_1 4 -pin simulator::top,ap 4
+load net {simulator::top,data[5]} -attr @name {data[5]} -attr @color #666666.1 -pin simulator::top,Initial_1 10 -pin simulator::top,ap 10
+load net {simulator::top,data_out[2]} -attr @name {data_out[2]} -attr @color #666666.1 -pin simulator::top,ap 31
+load net {simulator::top,addr[4]} -attr @name {addr[4]} -attr @color #666666.1 -pin simulator::top,Initial_1 21 -pin simulator::top,ap 21
+load net {simulator::top,data[2]} -attr @name {data[2]} -attr @color #666666.1 -pin simulator::top,Initial_1 13 -pin simulator::top,ap 13
+load net {simulator::top,addr[9]} -attr @name {addr[9]} -attr @color #666666.1 -pin simulator::top,Initial_1 16 -pin simulator::top,ap 16
+load net {simulator::top,addr[3]} -attr @name {addr[3]} -attr @color #666666.1 -pin simulator::top,Initial_1 22 -pin simulator::top,ap 22
+load net {simulator::top,ap,or_lut[2]} -attr @name {or_lut[2]} -attr @color #666666.1 -pin simulator::top,ap,_internal_expr_0 2
+load net {simulator::top,cmd[2]} -attr @name {cmd[2]} -attr @color #666666.1 -pin simulator::top,Initial_1 3 -pin simulator::top,ap 3
+load net {simulator::top,data_out[6]} -attr @name {data_out[6]} -attr @color #666666.1 -pin simulator::top,ap 27
+load net simulator::top,sel_col -attr @name sel_col -attr @color #666666.1 -pin simulator::top,Initial_1 7 -pin simulator::top,ap 7
+netloc simulator::top,sel_col 1 1 1 230
+load net {simulator::top,data[6]} -attr @name {data[6]} -attr @color #666666.1 -pin simulator::top,Initial_1 9 -pin simulator::top,ap 9
+load net {simulator::top,data_out[3]} -attr @name {data_out[3]} -attr @color #666666.1 -pin simulator::top,ap 30
+load net {simulator::top,data[3]} -attr @name {data[3]} -attr @color #666666.1 -pin simulator::top,Initial_1 12 -pin simulator::top,ap 12
+load net {simulator::top,addr[7]} -attr @name {addr[7]} -attr @color #666666.1 -pin simulator::top,Initial_1 18 -pin simulator::top,ap 18
+load net {simulator::top,addr[2]} -attr @name {addr[2]} -attr @color #666666.1 -pin simulator::top,Initial_1 23 -pin simulator::top,ap 23
+load net {simulator::top,data[0]} -attr @name {data[0]} -attr @color #666666.1 -pin simulator::top,Initial_1 15 -pin simulator::top,ap 15
+load net {simulator::top,data_out[0]} -attr @name {data_out[0]} -attr @color #666666.1 -pin simulator::top,ap 33
+load net simulator::top,ap_state_irq -attr @name ap_state_irq -attr @color #666666.1 -pin simulator::top,Always_0 0 -pin simulator::top,ap 34
+netloc simulator::top,ap_state_irq 1 2 1 NJ
+load net {simulator::top,ap,or_lut[3]} -attr @name {or_lut[3]} -attr @color #666666.1 -pin simulator::top,ap,_internal_expr_0 3
+load net {simulator::top,data_out[7]} -attr @name {data_out[7]} -attr @color #666666.1 -pin simulator::top,ap 26
+load net {simulator::top,addr[1]} -attr @name {addr[1]} -attr @color #666666.1 -pin simulator::top,Initial_1 24 -pin simulator::top,ap 24
+load net {simulator::top,ap,or_lut[pass_cnt][2]} -attr @name {or_lut[pass_cnt][2]} -attr @color #666666.1 -pin simulator::top,ap,_internal_expr_0 4
+load net {simulator::top,ap,or_lut[0]} -attr @name {or_lut[0]} -attr @color #666666.1 -pin simulator::top,ap,_internal_expr_0 0
+load net {simulator::top,data[7]} -attr @name {data[7]} -attr @color #666666.1 -pin simulator::top,Initial_1 8 -pin simulator::top,ap 8
+load net {simulator::top,data_out[4]} -attr @name {data_out[4]} -attr @color #666666.1 -pin simulator::top,ap 29
+load net {simulator::top,addr[6]} -attr @name {addr[6]} -attr @color #666666.1 -pin simulator::top,Initial_1 19 -pin simulator::top,ap 19
+load net {simulator::top,cmd[0]} -attr @name {cmd[0]} -attr @color #666666.1 -pin simulator::top,Initial_1 5 -pin simulator::top,ap 5
+load net {simulator::top,data[4]} -attr @name {data[4]} -attr @color #666666.1 -pin simulator::top,Initial_1 11 -pin simulator::top,ap 11
+load net {simulator::top,data_out[1]} -attr @name {data_out[1]} -attr @color #666666.1 -pin simulator::top,ap 32
+load net {simulator::top,addr[8]} -attr @name {addr[8]} -attr @color #666666.1 -pin simulator::top,Initial_1 17 -pin simulator::top,ap 17
+load net {simulator::top,ap,or_lut[pass_cnt][1]} -attr @style dashed -attr @name {or_lut[pass_cnt][1]} -attr @color #666666.1 -pin simulator::top,ap,_internal_expr_0 5
+load net simulator::top,write_en -attr @name write_en -attr @color #666666.1 -pin simulator::top,Initial_1 6 -pin simulator::top,ap 6
+netloc simulator::top,write_en 1 1 1 210
+load net {simulator::top,data[1]} -attr @name {data[1]} -attr @color #666666.1 -pin simulator::top,Initial_1 14 -pin simulator::top,ap 14
+load net {simulator::top,addr[5]} -attr @name {addr[5]} -attr @color #666666.1 -pin simulator::top,Initial_1 20 -pin simulator::top,ap 20
+load net {simulator::top,addr[0]} -attr @name {addr[0]} -attr @color #666666.1 -pin simulator::top,Initial_1 25 -pin simulator::top,ap 25
+load net simulator::top,clk -attr @name clk -attr @color #666666.1 -pin simulator::top,Initial_0 0 -pin simulator::top,Initial_1 1 -pin simulator::top,NOT_0 0 -pin simulator::top,NOT_0 1 -pin simulator::top,ap 0
+netloc simulator::top,clk 1 0 2 30 270 270
+load netBundle {simulator::top,ap,or_lut[0:3]} g4 -attr @name {or_lut[0:3]} -attr @color #666666.1
+netbloc {simulator::top,ap,or_lut[0:3]} 1 0 1 N
+load netBundle {simulator::top,addr[9:0]} g10 -attr @name {addr[9:0]} -attr @color #666666.1
+netbloc {simulator::top,addr[9:0]} 1 1 1 330
+load netBundle {simulator::top,ap,or_lut[pass_cnt]} {[2:0]} -attr @style dashed -attr @name {or_lut[pass_cnt]} -attr @color #666666.1
+netbloc {simulator::top,ap,or_lut[pass_cnt]} 1 1 1 N
+load netBundle {simulator::top,cmd[2:0]} g3 -attr @name {cmd[2:0]} -attr @color #666666.1
+netbloc {simulator::top,cmd[2:0]} 1 1 1 250
+load netBundle {simulator::top,data[7:0]} g8 -attr @name {data[7:0]} -attr @color #666666.1
+netbloc {simulator::top,data[7:0]} 1 1 1 310
+load netBundle {simulator::top,data_out[7:0]} g8 -attr @name {data_out[7:0]} -attr @color #666666.1
+netbloc {simulator::top,data_out[7:0]} 1 2 1 N
+levelinfo -pg 1 0 10 1150 -top 0 -bot 370
+levelinfo -hier simulator::top,ap * 600 *
+levelinfo -hier simulator::top * 80 410 920 *
+show
+zoom 1.31619
+scrollpos -32 -87
+#
+# initialize ictrl to current module root {}
+ictrl init -bulk {} ,
+}
+
+#
+# Console windows
+#
+console set -windowname Console
+window geometry Console 730x250+261+564
+
+#
+# Layout selection
+#

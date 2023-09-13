@@ -31,6 +31,7 @@ module AP_s #(
   input ap_mode,
   input [2:0] cmd,
   input [1:0] sel_col,
+  input sel_internal_col,
   input CLK100MHZ,                       
   input write_en,
   input read_en,                           
@@ -49,8 +50,11 @@ module AP_s #(
  wire [WORD_SIZE-1:0] data_out_a;
  wire [WORD_SIZE-1:0] data_out_b;
  wire [WORD_SIZE-1:0] data_out_c;
+ reg [WORD_SIZE-1:0] data_in_a;
+ reg [WORD_SIZE-1:0] data_in_b;
+ reg [WORD_SIZE-1:0] data_in_c;
  reg wea_a, wea_b, wea_c;
- reg addr;
+ 
  
 // FSM 
 parameter INIT=2'b00, COMPARE=2'b01, WRITE=2'b10, DONE=2'b11;
@@ -98,12 +102,11 @@ always @ (posedge clka) begin
     end
 end
 
- 
- initial addr = 0;  
- generate
+generate
     CAM cam_a(
         addr_in,
-        data_in,
+        sel_internal_col,
+        data_in_a,
         key_a,
         mask_a,
         CLK100MHZ,
@@ -114,7 +117,8 @@ end
     
     CAM cam_b(
         addr_in,
-        data_in,
+        sel_internal_col,
+        data_in_b,
         key_b,
         mask_b,
         CLK100MHZ,
@@ -125,7 +129,8 @@ end
     
     CAM cam_c(
         addr_in,
-        data_in,
+        sel_internal_col,
+        data_in_c,
         key_c,
         mask_c,
         CLK100MHZ,
@@ -136,14 +141,25 @@ end
  endgenerate
  
  always @(posedge clka) begin
-    if(!ap_mode) begin
+    if(!ap_mode && !rst) begin
       if (write_en) begin
         case(sel_col) 
-            1: wea_a <= 1;
-            2: wea_b <= 1;
-            3: wea_c <= 1;
-            default:
+            0: begin 
+                wea_a <= 1; 
+                data_in_a <= data_in;
+            end
+            1: begin 
+                wea_b <= 1;
+                data_in_b <= data_in;
+            end
+            2: begin 
+                wea_c <= 1;
+                data_in_c <= data_in;
+            end
+            default: begin
                 wea_a <= 1;
+                data_in_a <= data_in;
+            end
         endcase
       end else begin
           wea_a <= 0;
@@ -153,9 +169,9 @@ end
       
       if(read_en) begin
         case(sel_col) 
-            1: data_out <= data_out_a;
-            2: data_out <= data_out_b;
-            3: data_out <= data_out_c;
+            0: data_out <= data_out_a;
+            1: data_out <= data_out_b;
+            2: data_out <= data_out_c;
             default: data_out <= data_out_a;
         endcase
       end
@@ -166,15 +182,18 @@ end
 always @ (posedge clka)
 begin
 	if (rst) begin
-		mask_a <= 0;
-		mask_b <= 0;
-		mask_c <= 0;
-		key_a <= 0;
-		key_b <= 0;
-		key_c <= 0;
+		mask_a <= 8'hff; // Assumption: cell of 8 bits
+		mask_b <= 8'hff;
+		mask_c <= 8'hff;
+		key_a <= 10;
+		key_b <= 10;
+		key_c <= 10;
 		bit_cnt <= 0;
 		pass_cnt <= 0;
         ap_state_irq <= 0;
+        data_in_a <= 0;
+        data_in_b <= 0;
+        data_in_c <= 0;
     end else begin
     if (ap_mode) begin
         case(ap_state)

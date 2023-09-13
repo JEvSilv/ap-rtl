@@ -2,18 +2,17 @@
 
 module CAM_CELL#(
    parameter RAM_WIDTH = 8,
-   parameter RAM_ADDR_BITS = 1                   // Specify name/location of RAM initialization file if using one (leave blank if not)
+   parameter RAM_ADDR_BITS = 1
 ) (
-  input [RAM_ADDR_BITS-1:0] addra, // Write address bus, width determined from RAM_DEPTH
-  input [RAM_ADDR_BITS-1:0] addrb, // Read address bus, width determined from RAM_DEPTH
-  input [RAM_WIDTH-1:0] dina,          // RAM input data
+  input [RAM_ADDR_BITS-1:0] addr,      
+  input [RAM_WIDTH-1:0] dina,          
   input [RAM_WIDTH-1:0] key,
   input [RAM_WIDTH-1:0] mask,
   input rst,
-  input clka,                          // Clock
-  input wea,                           // Write enable
+  input clka,                          
+  input wea,                           
   output match,
-  output [RAM_WIDTH-1:0] doutb         // RAM output data
+  output [RAM_WIDTH-1:0] doutb         
 );
 
    (* ram_style="distributed" *)
@@ -21,21 +20,17 @@ module CAM_CELL#(
 
    wire [RAM_WIDTH-1:0] doutb;
 
-   wire [RAM_ADDR_BITS-1:0] addra, addrb;
+   wire [RAM_ADDR_BITS-1:0] addr;
    wire [RAM_WIDTH-1:0] dina;
 
-   initial begin
-        mem[addrb] = 0;
-   end
-   
    always @(posedge clka) begin
       if (rst)
-        mem[addrb] <= 0;
+            mem[addr] <= 0;
       else if (wea) begin
-         mem[addrb] <= (dina & mask) | (doutb & (~mask));
+         mem[addr] <= (dina & mask) | (doutb & (~mask));
       end
    end
     
-   assign doutb = mem[addra];
-   assign match = ((key & mask) == (mem[addra] & mask)) ? 1 : 0;
+   assign doutb = mem[addr];
+   assign match = ((key & mask) == (mem[addr] & mask)) ? 1 : 0;
 endmodule

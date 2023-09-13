@@ -1,12 +1,12 @@
 `timescale 1ns / 1ps
 
 module CAM #(
-   parameter RAM_WIDTH = 1,
    parameter RAM_ADDR_BITS = 1,
    parameter WORD_SIZE = 8,
    parameter CELL_QUANT = 512
 ) (
   input [clogb2(CELL_QUANT)-1:0] addr_in,
+  input internal_col_in,
   input [WORD_SIZE-1:0] dina, 
   input [WORD_SIZE-1:0] key,
   input [WORD_SIZE-1:0] mask,
@@ -25,17 +25,15 @@ module CAM #(
  
  assign doutb = cell_doutb_ctrl[addr_in];
  
- reg addr;
- initial addr = 0;
- 
  genvar g;
  generate
     for(g = 0; g < CELL_QUANT; g=g+1) begin
-            CAM_CELL _cam_cell(addr, 
-            addr, 
+            CAM_CELL _cam_cell(
+            internal_col_in,
             dina, 
             key, 
-            mask, 
+            mask,
+            rst, 
             clka, 
             cell_wea_ctrl[g], 
             tags[g],
@@ -45,10 +43,14 @@ module CAM #(
  endgenerate
  
  always @(posedge clka) begin
-      if (wea)
-        cell_wea_ctrl[addr_in] <= 1;
-      else
+      if(rst) begin
         cell_wea_ctrl <= 0;
+      end
+      else
+        if (wea)
+            cell_wea_ctrl[addr_in] <= 1;
+        else
+            cell_wea_ctrl <= 0;
  end
  
 function integer clogb2;

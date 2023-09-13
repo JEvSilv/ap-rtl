@@ -106,7 +106,9 @@ module top #(
 	reg ap_mode;
 	reg [2:0] cmd;
 	reg write_en;
+	reg read_en;
 	reg [1:0] sel_col;
+	reg sel_internal_col;
 	reg [7:0] data;
 	reg [7:0] data_out;
 	reg [clogb2(CELL_QUANT)-1:0] addr;
@@ -120,7 +122,8 @@ module top #(
        .ap_mode(ap_mode),
        .cmd(cmd),
        .sel_col(sel_col),
-       .CLK100MHZ(CLK100MHZ),                       
+       .sel_internal_col(sel_internal_col),
+       .CLK100MHZ(clk),                       
        .write_en(write_en),
        .read_en(read_en),                           
        .data_out(data_out),
@@ -129,22 +132,97 @@ module top #(
 
 	initial clk = 0;
 	always #1 clk = ~clk;
-
- 
+	
+	//initial CLK100MHZ = 0;
+	//always #1 CLK100MHZ = ~CLK100MHZ;
  
 	initial begin
+	    // Reseting and Cleaning Internal col 0	    
 	    #0.01 begin
-			clk <= 0;
+		clk <= 0;
+		addr <= 0;
+		sel_internal_col <= 0;
+		rst <= 1;
 		end
 		
 		#10 begin
-		addra <= 1;
-      	addrb <= 1;
-      	dina <= 10;            
-      	wea <= 1;                          
+		rst <= 0;                          
+		end
+        
+        // Reseting and Cleaning Internal col 1
+        #10 begin
+		sel_internal_col <= 1;
+		rst <= 1;
 		end
 		
+		// Changing back to internal col zero - changing name to bank
+		#10 begin
+		sel_internal_col <= 0;
+		rst <= 0;             
+		end
+		
+		// For write per bit test, the user needs to
+		// "play" with mask_a,b,c default values
+		
+		// For match test, the user needs to 
+		// "play" with ket_a,b,c default values
+		
+		// Write and read test for CAM A
+		#20 begin
+		ap_mode <= 0;
+		write_en <= 1;
+		addr <= 0;
+      	sel_col <= 0;
+      	data <= 10;                           
+		end
+		
+		#20 begin
+		ap_mode <= 0;
+		write_en <= 0;
+		read_en <= 1;
+		addr <= 0;
+      	sel_col <= 1;
+      	data <= 10;                           
+		end
+		
+		// Write and read test for CAM B
+		#20 begin
+		ap_mode <= 0;
+		write_en <= 1;
+		addr <= 0;
+      	sel_col <= 1;
+      	data <= 10;                           
+		end
+		
+		#20 begin
+		ap_mode <= 0;
+		write_en <= 0;
+		read_en <= 1;
+		addr <= 0;
+      	sel_col <= 1;
+      	data <= 10;                           
+		end
+		
+		// Write and read test for CAM C
+		#20 begin
+		ap_mode <= 0;
+		write_en <= 1;
+		addr <= 0;
+      	sel_col <= 2;
+      	data <= 10;                           
+		end
+		
+		#20 begin
+		ap_mode <= 0;
+		write_en <= 0;
+		read_en <= 1;
+		addr <= 0;
+      	sel_col <= 2;
+      	data <= 10;                           
+		end
 		#50 begin
+		
+		
 		$finish;                          
 		end
 	end 

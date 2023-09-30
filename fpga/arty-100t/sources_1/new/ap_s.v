@@ -53,8 +53,18 @@ module AP_s #(
  reg [WORD_SIZE-1:0] data_in_a;
  reg [WORD_SIZE-1:0] data_in_b;
  reg [WORD_SIZE-1:0] data_in_c;
+ reg [WORD_SIZE-1:0] ap_w_buffer;
  reg wea_a, wea_b, wea_c;
  
+ reg [CELL_QUANT-1:0] cell_wea_ctrl_ap_a;
+ reg [CELL_QUANT-1:0] cell_wea_ctrl_ap_b;
+ reg [CELL_QUANT-1:0] cell_wea_ctrl_ap_c;
+ 
+ wire [CELL_QUANT-1:0] tags_a;
+ wire [CELL_QUANT-1:0] tags_b;
+ wire [CELL_QUANT-1:0] tags_c;
+ 
+ reg cam_mode_a, cam_mode_b, cam_mode_c;
  
 // FSM 
 parameter INIT=2'b00, COMPARE=2'b01, WRITE=2'b10, DONE=2'b11;
@@ -105,37 +115,46 @@ end
 generate
     CAM cam_a(
         addr_in,
+        cell_wea_ctrl_ap_a,
         sel_internal_col,
+        cam_mode_a,
         data_in_a,
         key_a,
         mask_a,
         CLK100MHZ,
         rst,
         wea_a,
+        tags_a,
         data_out_a 
     );
     
     CAM cam_b(
         addr_in,
+        cell_wea_ctrl_ap_b,
         sel_internal_col,
+        cam_mode_b,
         data_in_b,
         key_b,
         mask_b,
         CLK100MHZ,
         rst,
         wea_b,
+        tags_b,
         data_out_b
     );
     
     CAM cam_c(
         addr_in,
+        cell_wea_ctrl_ap_c,
         sel_internal_col,
+        cam_mode_c,
         data_in_c,
         key_c,
         mask_c,
         CLK100MHZ,
         rst,
         wea_c,
+        tags_c,
         data_out_c
     );
  endgenerate
@@ -144,19 +163,23 @@ generate
     if(!ap_mode && !rst) begin
       if (write_en) begin
         case(sel_col) 
-            0: begin 
+            0: begin
+                //cam_mode_a <= 0; Move this to done state 
                 wea_a <= 1; 
                 data_in_a <= data_in;
             end
             1: begin 
+                //cam_mode_b <= 0;
                 wea_b <= 1;
                 data_in_b <= data_in;
             end
-            2: begin 
+            2: begin
+                //cam_mode_c <= 0; 
                 wea_c <= 1;
                 data_in_c <= data_in;
             end
             default: begin
+                //cam_mode_a <= 0;
                 wea_a <= 1;
                 data_in_a <= data_in;
             end
@@ -165,6 +188,9 @@ generate
           wea_a <= 0;
           wea_b <= 0;
           wea_c <= 0;
+          // cam_mode_a <= 0; // move this to reset
+          // cam_mode_b <= 0;
+          // cam_mode_c <= 0;
       end
       
       if(read_en) begin
@@ -178,22 +204,32 @@ generate
     end
  end
 
-
+integer i;
 always @ (posedge clka)
 begin
 	if (rst) begin
-		mask_a <= 8'hff; // Assumption: cell of 8 bits
-		mask_b <= 8'hff;
-		mask_c <= 8'hff;
-		key_a <= 10;
-		key_b <= 10;
-		key_c <= 10;
-		bit_cnt <= 0;
-		pass_cnt <= 0;
-        ap_state_irq <= 0;
-        data_in_a <= 0;
-        data_in_b <= 0;
-        data_in_c <= 0;
+      mask_a <= 8'hff; // Assumption: cell of 8 bits
+      mask_b <= 8'hff;
+      mask_c <= 8'hff;
+      key_a <= 0;
+      key_b <= 0;
+	  key_c <= 0;
+	  bit_cnt <= 0;
+	  pass_cnt <= 0;
+      ap_state_irq <= 0;
+      data_in_a <= 0;
+      data_in_b <= 0;
+      data_in_c <= 0;
+      cell_wea_ctrl_ap_a <= 0;
+      cell_wea_ctrl_ap_b <= 0;
+      cell_wea_ctrl_ap_c <= 0;
+      cam_mode_a <= 0;
+      cam_mode_b <= 0;
+      cam_mode_c <= 0;
+      // Maybe remove this signals
+      wea_a <= 0;
+      wea_b <= 0;
+      wea_c <= 0;
     end else begin
     if (ap_mode) begin
         case(ap_state)
@@ -201,26 +237,44 @@ begin
             mask_a <= 1;
             mask_b <= 1;
             mask_c <= 1;
+            wea_a <= 0;
+            wea_b <= 0;
+            wea_c <= 0;
             pass_cnt <= 0;
             bit_cnt <= 0;
             ap_state_irq <= 0;
+            cam_mode_c <= 1;
+            cell_wea_ctrl_ap_c <= 0;
+            ap_w_buffer <= 0;
           end
           COMPARE: begin
-             key_a = (or_lut[pass_cnt][0] << bit_cnt);
-             key_b = (or_lut[pass_cnt][1] << bit_cnt);
-             mask_a <= mask_a << 1;
-             mask_b <= mask_b << 1;
+             $display("COMPARE");
+             key_a <= (or_lut[pass_cnt][0] << bit_cnt);
+             key_b <= (or_lut[pass_cnt][1] << bit_cnt);
+             mask_a <= 1 << bit_cnt;
+             mask_b <= 1 << bit_cnt;
+             cell_wea_ctrl_ap_c <= 0;
           end
-          WRITE: begin 
+          WRITE: begin
+            $display("WRITE");
+            data_in_c <= (or_lut[pass_cnt][2] << bit_cnt);
+            cell_wea_ctrl_ap_c <= tags_a & tags_b;
+            mask_c <= 1 << bit_cnt;
             pass_cnt <= pass_cnt + 1;
+            
             if(pass_cnt == 3) begin
               bit_cnt <= bit_cnt + 1;
-              mask_a <= mask_a << 1;
-              mask_b <= mask_b << 1;
-            end          
+            end
+            
           end
           default: begin
             ap_state_irq <= 1;
+            cam_mode_a <= 0;
+            cam_mode_b <= 0;
+            cam_mode_c <= 0;
+            mask_a <= 8'hff; // Assumption: cell of 8 bits
+            mask_b <= 8'hff;
+            mask_c <= 8'hff;
           end
         endcase
     end

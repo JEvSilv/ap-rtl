@@ -18,11 +18,6 @@ module CAM_CELL#(
    (* ram_style="distributed" *)
    reg [RAM_WIDTH-1:0] mem [(2**RAM_ADDR_BITS)-1:0];
 
-   wire [RAM_WIDTH-1:0] doutb;
-
-   wire [RAM_ADDR_BITS-1:0] addr;
-   wire [RAM_WIDTH-1:0] dina;
-
    always @(posedge clka) begin
       if (rst)
             mem[addr] <= 0;

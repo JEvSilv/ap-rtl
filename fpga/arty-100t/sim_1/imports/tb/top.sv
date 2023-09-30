@@ -90,6 +90,7 @@ module top #(
       reg wea;                           // Write enable
       reg [WORD_SIZE-1:0] doutb;                   
       reg rst;
+	
 	/*  
 	MEM CAM (
 	  .addra(addra), 
@@ -136,11 +137,17 @@ module top #(
 	//initial CLK100MHZ = 0;
 	//always #1 CLK100MHZ = ~CLK100MHZ;
  
+    always @ (posedge ap_state_irq) begin
+       ap_mode <= 0;
+       $finish;
+    end
+ 
 	initial begin
 	    // Reseting and Cleaning Internal col 0	    
 	    #0.01 begin
 		clk <= 0;
 		addr <= 0;
+		ap_mode <= 0;
 		sel_internal_col <= 0;
 		rst <= 1;
 		end
@@ -173,7 +180,7 @@ module top #(
 		write_en <= 1;
 		addr <= 0;
       	sel_col <= 0;
-      	data <= 10;                           
+      	data <= 11;                           
 		end
 		
 		#20 begin
@@ -182,7 +189,7 @@ module top #(
 		read_en <= 1;
 		addr <= 0;
       	sel_col <= 1;
-      	data <= 10;                           
+      	data <= 11;                           
 		end
 		
 		// Write and read test for CAM B
@@ -191,7 +198,7 @@ module top #(
 		write_en <= 1;
 		addr <= 0;
       	sel_col <= 1;
-      	data <= 10;                           
+      	data <= 11;                           
 		end
 		
 		#20 begin
@@ -200,31 +207,38 @@ module top #(
 		read_en <= 1;
 		addr <= 0;
       	sel_col <= 1;
-      	data <= 10;                           
+      	data <= 11;                           
 		end
 		
 		// Write and read test for CAM C
-		#20 begin
-		ap_mode <= 0;
-		write_en <= 1;
-		addr <= 0;
-      	sel_col <= 2;
-      	data <= 10;                           
-		end
+		//#20 begin
+		//ap_mode <= 0;
+		//write_en <= 1;
+		//addr <= 0;
+      	//sel_col <= 2;
+      	//data <= 11;                           
+		//end
+		
+		//#20 begin
+		//ap_mode <= 0;
+		//write_en <= 0;
+		//read_en <= 1;
+		//addr <= 0;
+      	//sel_col <= 2;
+      	//data <= 11;                           
+		//end
 		
 		#20 begin
-		ap_mode <= 0;
-		write_en <= 0;
+		ap_mode <= 1;                          
 		read_en <= 1;
 		addr <= 0;
       	sel_col <= 2;
-      	data <= 10;                           
+      	data <= 11;
 		end
-		#50 begin
 		
-		
-		$finish;                          
-		end
+		//#50 begin
+		//$finish;                          
+		//end
 	end 
 
 function integer clogb2;

@@ -1,244 +1,138 @@
-/*
-module top (
-);
-
-	reg clk;
-	reg rst;
-	reg ap_mode;
-	reg [2:0] cmd;
-	reg write_en;
-	reg [1:0] sel_col;
-	reg [7:0] data;
-	reg [7:0] data_out;
-	reg [9:0] addr;
-	reg ap_state_irq;
-	
-	
-	AP ap (
-		.CLK100MHZ(clk),
-		.rst(rst),
-		.ap_mode(ap_mode),
-		.cmd(cmd),
-		.sel_col(sel_col),
-		.write_en(write_en),
-		.data(data),
-		.addr(addr),
-		.data_out(data_out),
-		.ap_state_irq(ap_state_irq)
-	);
-
-	initial clk = 0;
-	always #1 clk = ~clk;
-
-  always @ (posedge ap_state_irq) begin
-    ap_mode <= 0;
-    #5 $finish;
-  end
-
-	initial begin
-		#0.01 begin
-			rst <= 1;
-			clk <= 0;
-			ap_mode <= 0;
-			cmd <= 0;
-			write_en <= 0;
-			sel_col <= 0;
-			data <= 0;
-			addr <= 0;
-		end
-		#10 rst <= 0;//release reset
-		// Testing Memory features
-    #15 begin
-			data <= 1;
-			sel_col <= 0; // col_a
-			write_en <= 1;
-			addr <= 1;
-		end
-		#20 begin
-			data <= 1;
-			sel_col <= 1; // col_b
-			write_en <= 1;
-			addr <= 1;
-		end
-		#25 begin
-			data <= 1;
-			sel_col <= 2; // col_c
-			write_en <= 1;
-			addr <= 1;
-		end	
-    // Testing Associative Processing 
-    #30 begin
-			ap_mode <= 1;
-		end	
-	end 
-
-endmodule
-*/
-
 module top #(
    parameter RAM_WIDTH = 1,
    parameter RAM_ADDR_BITS = 1,
    parameter WORD_SIZE = 8,
    parameter CELL_QUANT = 512 
 );
-
-      reg [CELL_QUANT-1:0] tags;
-	  reg  [clogb2(CELL_QUANT)-1:0] addra; // Write address bus, width determined from RAM_DEPTH
-      reg  [clogb2(CELL_QUANT)-1:0] addrb; // Read address bus, width determined from RAM_DEPTH
-      reg [WORD_SIZE-1:0] dina;         // RAM input data
-      reg clk;                          // Clock
-      reg wea;                           // Write enable
-      reg [WORD_SIZE-1:0] doutb;                   
-      reg rst;
-	
-	/*  
-	MEM CAM (
-	  .addra(addra), 
-      .addrb(addrb), 
-      .dina(dina),          
-      .CLK100MHZ(clk),                         
-      .wea(wea),                        
-      .doutb(doutb)      
-	);
-	*/
-	
-	reg clk;
-	reg rst;
-	reg ap_mode;
-	reg [2:0] cmd;
-	reg write_en;
-	reg read_en;
-	reg [1:0] sel_col;
-	reg sel_internal_col;
-	reg [7:0] data;
-	reg [7:0] data_out;
-	reg [clogb2(CELL_QUANT)-1:0] addr;
-	reg ap_state_irq;
-	
+    
+    bit [WORD_SIZE-1:0] random_data_a [CELL_QUANT-1:0];
+	bit [WORD_SIZE-1:0] random_data_b [CELL_QUANT-1:0];
+	bit [WORD_SIZE-1:0] random_data_c [CELL_QUANT-1:0];
+	 
+	ap_if _ap_if();
 	
 	AP_s AP (
-       .addr_in(addr),
-       .data_in(data),         
-       .rst(rst),
-       .ap_mode(ap_mode),
-       .cmd(cmd),
-       .sel_col(sel_col),
-       .sel_internal_col(sel_internal_col),
-       .CLK100MHZ(clk),                       
-       .write_en(write_en),
-       .read_en(read_en),                           
-       .data_out(data_out),
-       .ap_state_irq(ap_state_irq)
+       .addr_in(_ap_if.addr),
+       .data_in(_ap_if.data),         
+       .rst(_ap_if.rst),
+       .ap_mode(_ap_if.ap_mode),
+       .cmd(_ap_if.cmd),
+       .sel_col(_ap_if.sel_col),
+       .sel_internal_col(_ap_if.sel_internal_col),
+       .CLK100MHZ(_ap_if.clk),
+       //.CLK100MHZ(CLK100MHZ),                       
+       .write_en(_ap_if.write_en),
+       .read_en(_ap_if.read_en),                           
+       .data_out(_ap_if.data_out),
+       .ap_state_irq(_ap_if.ap_state_irq)
 	);
-
-	initial clk = 0;
-	always #1 clk = ~clk;
-	
-	//initial CLK100MHZ = 0;
-	//always #1 CLK100MHZ = ~CLK100MHZ;
- 
-    always @ (posedge ap_state_irq) begin
-       ap_mode <= 0;
+    
+    always @ (posedge _ap_if.ap_state_irq) begin
+       _ap_if.ap_mode <= 0;
        $finish;
     end
- 
-	initial begin
-	    // Reseting and Cleaning Internal col 0	    
-	    #0.01 begin
-		clk <= 0;
-		addr <= 0;
-		ap_mode <= 0;
-		sel_internal_col <= 0;
-		rst <= 1;
+               
+	initial _ap_if.clk = 0;
+	always #1 _ap_if.clk <= ~_ap_if.clk;
+	
+	task ap_reset(input int interval);
+        // Reseting and Cleaning Internal col 0	    
+	    #(interval * 1ns); begin
+		_ap_if.clk <= 0;
+		_ap_if.addr <= 0;
+		_ap_if.ap_mode <= 0;
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.rst <= 1;
 		end
 		
-		#10 begin
-		rst <= 0;                          
+		#(interval * 1ns); begin
+		_ap_if.rst <= 0;                          
 		end
         
         // Reseting and Cleaning Internal col 1
-        #10 begin
-		sel_internal_col <= 1;
-		rst <= 1;
+        #(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 1;
+		_ap_if.rst <= 1;
 		end
 		
 		// Changing back to internal col zero - changing name to bank
-		#10 begin
-		sel_internal_col <= 0;
-		rst <= 0;             
+		#(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.rst <= 0;             
 		end
-		
-		// For write per bit test, the user needs to
-		// "play" with mask_a,b,c default values
-		
-		// For match test, the user needs to 
-		// "play" with ket_a,b,c default values
-		
-		// Write and read test for CAM A
-		#20 begin
-		ap_mode <= 0;
-		write_en <= 1;
-		addr <= 0;
-      	sel_col <= 0;
-      	data <= 11;                           
-		end
-		
-		#20 begin
-		ap_mode <= 0;
-		write_en <= 0;
-		read_en <= 1;
-		addr <= 0;
-      	sel_col <= 1;
-      	data <= 11;                           
-		end
-		
-		// Write and read test for CAM B
-		#20 begin
-		ap_mode <= 0;
-		write_en <= 1;
-		addr <= 0;
-      	sel_col <= 1;
-      	data <= 11;                           
-		end
-		
-		#20 begin
-		ap_mode <= 0;
-		write_en <= 0;
-		read_en <= 1;
-		addr <= 0;
-      	sel_col <= 1;
-      	data <= 11;                           
-		end
-		
-		// Write and read test for CAM C
-		//#20 begin
-		//ap_mode <= 0;
-		//write_en <= 1;
-		//addr <= 0;
-      	//sel_col <= 2;
-      	//data <= 11;                           
-		//end
-		
-		//#20 begin
-		//ap_mode <= 0;
-		//write_en <= 0;
-		//read_en <= 1;
-		//addr <= 0;
-      	//sel_col <= 2;
-      	//data <= 11;                           
-		//end
-		
-		#20 begin
-		ap_mode <= 1;                          
-		read_en <= 1;
-		addr <= 0;
-      	sel_col <= 2;
-      	data <= 11;
-		end
-		
-		//#50 begin
-		//$finish;                          
-		//end
+    endtask
+	
+    task ap_write(input int delay, logic sel_col, logic sel_internal_col, logic [clogb2(CELL_QUANT)-1:0] addr, logic [WORD_SIZE-1:0] data);
+        #(delay * 1ns);
+        _ap_if.ap_mode <= 0;
+		_ap_if.write_en <= 1;
+		_ap_if.addr <= addr;
+		_ap_if.sel_col <= sel_col;
+		_ap_if.sel_internal_col <= sel_internal_col;
+      	_ap_if.data <= data;
+      	#(delay * 1ns);
+    endtask
+    
+    task ap_read(input int delay, logic sel_col, logic sel_internal_col, logic [clogb2(CELL_QUANT)-1:0] addr);
+        #(delay * 1ns);
+        _ap_if.addr <= addr;
+        _ap_if.ap_mode <= 0;
+		_ap_if.write_en <= 0;
+		_ap_if.read_en <= 1;
+		_ap_if.addr <= addr;
+		_ap_if.sel_internal_col <= sel_internal_col;
+		_ap_if.sel_col <= sel_col;
+        #(delay * 1ns);
+    endtask
+    
+    task fill_ap_random(input int delay, logic sel_col, logic sel_internal_col, bit [WORD_SIZE-1:0] random_data [CELL_QUANT-1:0]);
+        for(int i = 0; i < CELL_QUANT; i++)
+            ap_write(delay, sel_col, sel_internal_col, i, _ap_if.random_data_a[i]);
+    endtask
+    
+    task ap_computing(input int delay, logic [2:0] cmd);
+        #(delay * 1ns);
+        _ap_if.cmd <= cmd;
+        _ap_if.ap_mode <= 1;
+    endtask
+    
+    task generate_random_list();
+        foreach(random_data_a[i])
+            random_data_a[i] <= $urandom();
+        
+        foreach(_ap_if.random_data_b[i])
+            random_data_b[i] <= $urandom();
+    endtask
+    
+    task check_results(input [2:0] cmd);
+        // switch with cmd
+        for (int i = 0; i < CELL_QUANT; i++)
+            random_data_c[i] <= random_data_a[i] | random_data_b[i]; 
+    
+        for (int i = 0; i < CELL_QUANT; i++)
+            if(random_data_c[i] == top.AP.cam_c.cell_doutb_ctrl[i])
+                $display("Pass[%d] = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]);
+            else
+                $display("FAIL[%d] = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]); $finish;
+         
+    endtask
+    
+    task sim(input int interval);
+        #(interval * 1ns);
+        ap_reset(10);
+        #(interval * 1ns);
+        generate_random_list();
+        #(interval * 1ns);
+        fill_ap_random(10, 0, 0, random_data_a);
+        #(interval * 1ns);
+        fill_ap_random(10, 1, 0, random_data_b);
+        #(interval * 1ns);
+        ap_computing(0,0);
+    endtask
+    
+    
+	initial begin
+	    sim(10);
 	end 
 
 function integer clogb2;

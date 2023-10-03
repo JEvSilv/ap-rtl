@@ -159,51 +159,6 @@ generate
     );
  endgenerate
  
- always @(posedge clka) begin
-    if(!ap_mode && !rst) begin
-      if (write_en) begin
-        case(sel_col) 
-            0: begin
-                //cam_mode_a <= 0; Move this to done state 
-                wea_a <= 1; 
-                data_in_a <= data_in;
-            end
-            1: begin 
-                //cam_mode_b <= 0;
-                wea_b <= 1;
-                data_in_b <= data_in;
-            end
-            2: begin
-                //cam_mode_c <= 0; 
-                wea_c <= 1;
-                data_in_c <= data_in;
-            end
-            default: begin
-                //cam_mode_a <= 0;
-                wea_a <= 1;
-                data_in_a <= data_in;
-            end
-        endcase
-      end else begin
-          wea_a <= 0;
-          wea_b <= 0;
-          wea_c <= 0;
-          // cam_mode_a <= 0; // move this to reset
-          // cam_mode_b <= 0;
-          // cam_mode_c <= 0;
-      end
-      
-      if(read_en) begin
-        case(sel_col) 
-            0: data_out <= data_out_a;
-            1: data_out <= data_out_b;
-            2: data_out <= data_out_c;
-            default: data_out <= data_out_a;
-        endcase
-      end
-    end
- end
-
 integer i;
 always @ (posedge clka)
 begin
@@ -217,29 +172,29 @@ begin
 	  bit_cnt <= 0;
 	  pass_cnt <= 0;
       ap_state_irq <= 0;
-      data_in_a <= 0;
-      data_in_b <= 0;
-      data_in_c <= 0;
       cell_wea_ctrl_ap_a <= 0;
       cell_wea_ctrl_ap_b <= 0;
       cell_wea_ctrl_ap_c <= 0;
       cam_mode_a <= 0;
       cam_mode_b <= 0;
       cam_mode_c <= 0;
-      // Maybe remove this signals
-      wea_a <= 0;
-      wea_b <= 0;
-      wea_c <= 0;
     end else begin
+    
+    if(read_en) begin
+        case(sel_col) 
+            0: data_out <= data_out_a;
+            1: data_out <= data_out_b;
+            2: data_out <= data_out_c;
+            default: data_out <= data_out_a;
+        endcase
+    end
+    
     if (ap_mode) begin
         case(ap_state)
           INIT: begin
             mask_a <= 1;
             mask_b <= 1;
             mask_c <= 1;
-            wea_a <= 0;
-            wea_b <= 0;
-            wea_c <= 0;
             pass_cnt <= 0;
             bit_cnt <= 0;
             ap_state_irq <= 0;
@@ -277,6 +232,31 @@ begin
             mask_c <= 8'hff;
           end
         endcase
+    end else begin
+    if (write_en) begin
+        case(sel_col) 
+            0: begin 
+                wea_a <= 1; 
+                data_in_a <= data_in;
+            end
+            1: begin 
+                wea_b <= 1;
+                data_in_b <= data_in;
+            end
+            2: begin
+                wea_c <= 1;
+                data_in_c <= data_in;
+            end
+            default: begin
+                wea_a <= 1;
+                data_in_a <= data_in;
+            end
+        endcase
+      end else begin
+          wea_a <= 0;
+          wea_b <= 0;
+          wea_c <= 0;
+      end 
     end
   end
 end

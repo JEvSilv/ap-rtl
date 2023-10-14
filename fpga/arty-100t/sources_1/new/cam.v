@@ -51,6 +51,7 @@ module CAM #(
      end
  endgenerate
  
+ // Maybe this could be implemented async
  integer i;
  always @(posedge clka) begin
       if(rst) begin
@@ -59,19 +60,12 @@ module CAM #(
       else
         if(!cam_mode) begin
             if (wea) begin
-                cell_wea_ctrl[addr_in] <= 1;
+                cell_wea_ctrl <= 1 << addr_in;
             end
             else
                 cell_wea_ctrl <= 0;
         end  else begin
            cell_wea_ctrl <= cell_wea_ctrl_ap;
-           //$display("# --- CAM --- #");
-           //$display("mask: %h", mask);
-           //$display("cell_wea_ctrl: %h", cell_wea_ctrl);
-           //$display("dina: %h", dina);
-           //$display("cell_doutb_ctrl[0]: %h", cell_doutb_ctrl[0]);
-           //$display("cell_doutb_ctrl[1]: %h", cell_doutb_ctrl[1]);
-           //$display("\n");
         end 
  end
  

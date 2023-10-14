@@ -56,6 +56,8 @@ module AP_s #(
  reg [WORD_SIZE-1:0] ap_w_buffer;
  reg wea_a, wea_b, wea_c;
  
+ reg [2:0] wea_abc;
+ 
  reg [CELL_QUANT-1:0] cell_wea_ctrl_ap_a;
  reg [CELL_QUANT-1:0] cell_wea_ctrl_ap_b;
  reg [CELL_QUANT-1:0] cell_wea_ctrl_ap_c;
@@ -123,7 +125,7 @@ generate
         mask_a,
         CLK100MHZ,
         rst,
-        wea_a,
+        wea_abc[0],
         tags_a,
         data_out_a 
     );
@@ -138,7 +140,7 @@ generate
         mask_b,
         CLK100MHZ,
         rst,
-        wea_b,
+        wea_abc[1],
         tags_b,
         data_out_b
     );
@@ -153,7 +155,7 @@ generate
         mask_c,
         CLK100MHZ,
         rst,
-        wea_c,
+        wea_abc[2],
         tags_c,
         data_out_c
     );
@@ -234,28 +236,23 @@ begin
         endcase
     end else begin
     if (write_en) begin
+        wea_abc <= 1 << sel_col;
         case(sel_col) 
             0: begin 
-                wea_a <= 1; 
                 data_in_a <= data_in;
             end
             1: begin 
-                wea_b <= 1;
                 data_in_b <= data_in;
             end
             2: begin
-                wea_c <= 1;
                 data_in_c <= data_in;
             end
             default: begin
-                wea_a <= 1;
                 data_in_a <= data_in;
             end
         endcase
       end else begin
-          wea_a <= 0;
-          wea_b <= 0;
-          wea_c <= 0;
+        wea_abc <= 0;
       end 
     end
   end

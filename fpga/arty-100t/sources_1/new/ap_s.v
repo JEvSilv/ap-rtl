@@ -79,6 +79,30 @@ assign or_lut[1] = 3'b101;
 assign or_lut[2] = 3'b110;
 assign or_lut[3] = 3'b111;
 
+wire [2:0] ap_lut [0:3][0:3];
+// OR
+assign ap_lut[0][0] = 3'b000;
+assign ap_lut[0][1] = 3'b110;
+assign ap_lut[0][2] = 3'b101;
+assign ap_lut[0][3] = 3'b111;
+
+// XOR
+assign ap_lut[1][0] = 3'b000;
+assign ap_lut[1][1] = 3'b110;
+assign ap_lut[1][2] = 3'b101;
+assign ap_lut[1][3] = 3'b011;
+
+// AND
+assign ap_lut[2][0] = 3'b000;
+assign ap_lut[2][1] = 3'b010;
+assign ap_lut[2][2] = 3'b001;
+assign ap_lut[2][3] = 3'b111;
+
+// NOT: Ignoring B which means C = ~A
+assign ap_lut[3][0] = 3'b100;
+assign ap_lut[3][1] = 3'b110;
+assign ap_lut[3][2] = 3'b001;
+assign ap_lut[3][3] = 3'b011;
 
 // Counters 
 reg [3:0] bit_cnt;
@@ -206,15 +230,15 @@ begin
           end
           COMPARE: begin
              $display("COMPARE");
-             key_a <= (or_lut[pass_cnt][0] << bit_cnt);
-             key_b <= (or_lut[pass_cnt][1] << bit_cnt);
+             key_a <= (ap_lut[cmd][pass_cnt][0] << bit_cnt);
+             key_b <= (ap_lut[cmd][pass_cnt][1] << bit_cnt);
              mask_a <= 1 << bit_cnt;
              mask_b <= 1 << bit_cnt;
              cell_wea_ctrl_ap_c <= 0;
           end
           WRITE: begin
             $display("WRITE");
-            data_in_c <= (or_lut[pass_cnt][2] << bit_cnt);
+            data_in_c <= (ap_lut[cmd][pass_cnt][2] << bit_cnt);
             cell_wea_ctrl_ap_c <= tags_a & tags_b;
             mask_c <= 1 << bit_cnt;
             pass_cnt <= pass_cnt + 1;

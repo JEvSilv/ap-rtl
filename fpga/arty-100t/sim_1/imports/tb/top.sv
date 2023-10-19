@@ -8,8 +8,12 @@ module top #(
     logic [WORD_SIZE-1:0] random_data_a [CELL_QUANT-1:0];
 	logic [WORD_SIZE-1:0] random_data_b [CELL_QUANT-1:0];
 	logic [WORD_SIZE-1:0] random_data_c [CELL_QUANT-1:0];
-	 
+	logic [2:0] cmd_global_op;
 	ap_if _ap_if();
+	
+	parameter OR=0, XOR=1, AND=2, NOT=3;
+	assign cmd_global_op = NOT;
+	
 	
 	AP_s AP (
        .addr_in(_ap_if.addr),
@@ -30,7 +34,7 @@ module top #(
     always @ (posedge _ap_if.ap_state_irq) begin
        _ap_if.ap_mode <= 0;
        #2
-       check_results(10, 0);
+       check_results(10, cmd_global_op);
        $finish;
     end
                
@@ -135,15 +139,26 @@ module top #(
     
     
     task check_results(input int delay, input [2:0] cmd);
+        
+        case(cmd)
+            0: $display("OR OPERATION");
+            1: $display("XOR OPERATION");
+            2: $display("AND OPERATION");
+            3: $display("NOT OPERATION");
+            default: $display("OR OPERATION");
+        endcase
         // switch with cmd
         #(delay * 1ns);
-        for (int i = 0; i < CELL_QUANT; i++)
-            random_data_c[i] <= random_data_a[i] | random_data_b[i]; 
+        for (int i = 0; i < CELL_QUANT; i++) begin
+            case(cmd)
+                0: random_data_c[i] <= random_data_a[i] | random_data_b[i];
+                1: random_data_c[i] <= random_data_a[i] ^ random_data_b[i];
+                2: random_data_c[i] <= random_data_a[i] & random_data_b[i];
+                3: random_data_c[i] <= ~random_data_a[i];
+                default: random_data_c[i] <= random_data_a[i] | random_data_b[i];
+            endcase
+        end
         #(delay * 1ns);
-        /*
-        for (int i = 0; i < CELL_QUANT; i++)
-            $display(top.AP.cam_c.cell_doutb_ctrl[i]);
-        */  
         
         for (int i = 0; i < CELL_QUANT; i++)
             if(random_data_c[i] == top.AP.cam_c.cell_doutb_ctrl[i])
@@ -175,7 +190,7 @@ module top #(
         #(interval * 1ns);
         check_random_fill(0);
         #(interval * 1ns);
-        ap_computing(0,0);
+        ap_computing(0, cmd_global_op);
         /*
         #(interval * 1ns);
         check_results(10, 0);

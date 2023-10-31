@@ -11,8 +11,8 @@ module top #(
 	logic [2:0] cmd_global_op;
 	ap_if _ap_if();
 	
-	parameter OR=0, XOR=1, AND=2, NOT=3;
-	assign cmd_global_op = NOT;
+	parameter OR=0, XOR=1, AND=2, NOT=3, ADD=4, SUB=5, MULT=6;
+	assign cmd_global_op = ADD;
 	
 	
 	AP_s AP (
@@ -121,12 +121,20 @@ module top #(
         #(100 * 1ns);
     endtask
     
-    task generate_random_list();
+    task generate_random_list(input [2:0] cmd);
         foreach(random_data_a[i])
             random_data_a[i] <= $urandom();
         
         foreach(random_data_b[i])
             random_data_b[i] <= $urandom();
+        if (cmd > 3) begin
+            foreach(random_data_a[i])
+                random_data_a[i] <= $urandom() & 8'h7f;
+            
+            foreach(random_data_b[i])
+                random_data_b[i] <= $urandom() & 8'h7f;
+        end
+        
     endtask
     
     task check_random_fill(input delay);
@@ -145,6 +153,8 @@ module top #(
             1: $display("XOR OPERATION");
             2: $display("AND OPERATION");
             3: $display("NOT OPERATION");
+            4: $display("ADD OPERATION");
+            5: $display("SUB OPERATION");
             default: $display("OR OPERATION");
         endcase
         // switch with cmd
@@ -155,6 +165,8 @@ module top #(
                 1: random_data_c[i] <= random_data_a[i] ^ random_data_b[i];
                 2: random_data_c[i] <= random_data_a[i] & random_data_b[i];
                 3: random_data_c[i] <= ~random_data_a[i];
+                4: random_data_c[i] <= random_data_a[i] + random_data_b[i];
+                5: random_data_c[i] <= random_data_a[i] - random_data_b[i];
                 default: random_data_c[i] <= random_data_a[i] | random_data_b[i];
             endcase
         end
@@ -172,7 +184,8 @@ module top #(
         #(interval * 1ns);
         ap_reset(10);
         #(interval * 1ns);
-        generate_random_list();
+        generate_random_list(cmd_global_op);
+        
         //ap_write(delay,  sel_col, sel_internal_col, addr, data);
         /*
         #(interval * 1ns);

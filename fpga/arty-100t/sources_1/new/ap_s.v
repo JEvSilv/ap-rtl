@@ -104,9 +104,19 @@ assign ap_lut[3][1] = 3'b110;
 assign ap_lut[3][2] = 3'b001;
 assign ap_lut[3][3] = 3'b011;
 
+// Carry | A | B | Carry | C 
+// [Cr C | Cr B A]
+// Carry MSB of C col?
+wire [4:0] add_lut [0:4];
+assign add_lut[0] = 5'b01001;
+assign add_lut[1] = 5'b01010;
+assign add_lut[2] = 5'b01100;
+assign add_lut[3] = 5'b11111;
+assign add_lut[4] = 5'b10011;
+
 // Counters 
 reg [3:0] bit_cnt;
-reg [1:0] pass_cnt;
+reg [2:0] pass_cnt;
 
 // Parallel FSM 
 always @ (posedge clka) begin
@@ -121,11 +131,11 @@ always @ (posedge clka) begin
             next_state = COMPARE;
           end
           COMPARE: begin
-            if(bit_cnt == 4'b1000) begin
-              next_state = DONE;
-            end else begin
-              next_state = WRITE;	       
-            end
+             if(bit_cnt == 4'b1000) begin
+                next_state = DONE;
+             end else begin
+                next_state = WRITE;	       
+             end
           end
           WRITE: begin
             next_state = COMPARE;         
@@ -220,7 +230,7 @@ begin
           INIT: begin
             mask_a <= 1;
             mask_b <= 1;
-            mask_c <= 1;
+            mask_c <= 8'h80 | 1;
             pass_cnt <= 0;
             bit_cnt <= 0;
             ap_state_irq <= 0;
@@ -230,23 +240,60 @@ begin
           end
           COMPARE: begin
              $display("COMPARE");
-             key_a <= (ap_lut[cmd][pass_cnt][0] << bit_cnt);
-             key_b <= (ap_lut[cmd][pass_cnt][1] << bit_cnt);
+             if(cmd < 4) begin
+                 key_a <= (ap_lut[cmd][pass_cnt][0] << bit_cnt);
+                 key_b <= (ap_lut[cmd][pass_cnt][1] << bit_cnt);
+             end
+             
+             // ADD and SUB
+             if(cmd == 4 || cmd == 5) begin
+                key_a <= (add_lut[pass_cnt][0] << bit_cnt);
+                key_b <= (add_lut[pass_cnt][1] << bit_cnt);
+                // Carry or borrow
+                key_c <= (add_lut[pass_cnt][2] << 7);
+                mask_c = 8'h80 | 1 << bit_cnt;
+                //mask_c = 8'h80; 
+             end
+             
              mask_a <= 1 << bit_cnt;
              mask_b <= 1 << bit_cnt;
              cell_wea_ctrl_ap_c <= 0;
           end
           WRITE: begin
             $display("WRITE");
-            data_in_c <= (ap_lut[cmd][pass_cnt][2] << bit_cnt);
-            cell_wea_ctrl_ap_c <= tags_a & tags_b;
-            mask_c <= 1 << bit_cnt;
+            $display("Key (A,B,C): %b %b %b", key_a, key_b, key_c);
+            $display("Mask (A,B,C): %b %b %b", mask_a, mask_b, mask_c);
+            cell_wea_ctrl_ap_c <= tags_a & tags_b & tags_c; // Test
             pass_cnt <= pass_cnt + 1;
             
-            if(pass_cnt == 3) begin
-              bit_cnt <= bit_cnt + 1;
+            // Logical operations    
+            if(cmd < 4) begin
+                data_in_c <= (ap_lut[cmd][pass_cnt][2] << bit_cnt);
+                //cell_wea_ctrl_ap_c <= tags_a & tags_b;
+                mask_c <= 1 << bit_cnt;
+                
+                if(pass_cnt == 3) begin
+                  pass_cnt <= 0;
+                  bit_cnt <= bit_cnt + 1;
+                end
             end
             
+            // ADD and SUB
+            if(cmd == 4 || cmd == 5) begin
+                data_in_c <= (add_lut[pass_cnt][4] << 7) | (add_lut[pass_cnt][3] << bit_cnt);
+                //mask_c <= 8'h80 | 1 << bit_cnt;
+                
+                $display("data_in_c: %b", data_in_c);
+                $display("mask_c: %b", mask_c);
+                
+                $display("bit_count: %d", bit_cnt);
+                $display("pass: %d", pass_cnt);
+                
+                if(pass_cnt == 4) begin
+                  pass_cnt <= 0;
+                  bit_cnt <= bit_cnt + 1;
+                end            
+            end 
           end
           default: begin
             ap_state_irq <= 1;

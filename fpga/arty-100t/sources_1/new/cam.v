@@ -30,7 +30,7 @@ module CAM #(
  wire clka;
  assign clka = CLK100MHZ;
  wire [WORD_SIZE-1:0] cell_doutb_ctrl [CELL_QUANT-1:0];
- reg  [CELL_QUANT-1:0] cell_wea_ctrl;
+ wire  [CELL_QUANT-1:0] cell_wea_ctrl;
  
  assign doutb = cell_doutb_ctrl[addr_in];
  
@@ -50,7 +50,13 @@ module CAM #(
             );
      end
  endgenerate
- 
+
+wire [CELL_QUANT-1:0] wea_addr;
+
+assign wea_addr = wea ? 1 << addr_in : 0;
+assign cell_wea_ctrl = cam_mode ? cell_wea_ctrl_ap : wea_addr;
+
+ /*
  // Maybe this could be implemented async
  integer i;
  always @(posedge clka) begin
@@ -68,7 +74,7 @@ module CAM #(
            cell_wea_ctrl <= cell_wea_ctrl_ap;
         end 
  end
- 
+ */
 function integer clogb2;
   input integer depth;
       for (clogb2=0; depth>0; clogb2=clogb2+1)

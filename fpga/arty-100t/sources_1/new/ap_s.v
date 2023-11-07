@@ -114,6 +114,16 @@ assign add_lut[2] = 5'b01100;
 assign add_lut[3] = 5'b11111;
 assign add_lut[4] = 5'b10011;
 
+// Carry | A | B | Carry | C 
+// [Cr C | Cr B A]
+// Carry MSB of C col?
+wire [4:0] sub_lut [0:5];
+assign sub_lut[0] = 5'b11100;
+assign sub_lut[1] = 5'b11111;
+assign sub_lut[2] = 5'b01001;
+assign sub_lut[3] = 5'b11010;
+assign sub_lut[4] = 5'b00101;
+
 // Counters 
 reg [3:0] bit_cnt;
 reg [2:0] pass_cnt;
@@ -243,16 +253,24 @@ begin
              if(cmd < 4) begin
                  key_a <= (ap_lut[cmd][pass_cnt][0] << bit_cnt);
                  key_b <= (ap_lut[cmd][pass_cnt][1] << bit_cnt);
+                 mask_c <= 1 << bit_cnt;   
              end
              
              // ADD and SUB
              if(cmd == 4 || cmd == 5) begin
-                key_a <= (add_lut[pass_cnt][0] << bit_cnt);
-                key_b <= (add_lut[pass_cnt][1] << bit_cnt);
-                // Carry or borrow
-                key_c <= (add_lut[pass_cnt][2] << 7);
+                if(cmd == 4) begin
+                    key_a <= (add_lut[pass_cnt][0] << bit_cnt);
+                    key_b <= (add_lut[pass_cnt][1] << bit_cnt);
+                    // Carry or borrow
+                    key_c <= (add_lut[pass_cnt][2] << 7);
+                end else begin
+                    key_a <= (sub_lut[pass_cnt][0] << bit_cnt);
+                    key_b <= (sub_lut[pass_cnt][1] << bit_cnt);
+                    // Carry or borrow
+                    key_c <= (sub_lut[pass_cnt][2] << 7);
+                end
+                
                 mask_c = 8'h80 | 1 << bit_cnt;
-                //mask_c = 8'h80; 
              end
              
              mask_a <= 1 << bit_cnt;
@@ -263,14 +281,17 @@ begin
             $display("WRITE");
             $display("Key (A,B,C): %b %b %b", key_a, key_b, key_c);
             $display("Mask (A,B,C): %b %b %b", mask_a, mask_b, mask_c);
+            $display("data_in_c: %b", data_in_c);
+            $display("mask_c: %b", mask_c);
+            $display("bit_count: %d", bit_cnt);
+            $display("pass: %d", pass_cnt);
+            
             cell_wea_ctrl_ap_c <= tags_a & tags_b & tags_c; // Test
             pass_cnt <= pass_cnt + 1;
             
             // Logical operations    
             if(cmd < 4) begin
                 data_in_c <= (ap_lut[cmd][pass_cnt][2] << bit_cnt);
-                //cell_wea_ctrl_ap_c <= tags_a & tags_b;
-                mask_c <= 1 << bit_cnt;
                 
                 if(pass_cnt == 3) begin
                   pass_cnt <= 0;
@@ -280,14 +301,10 @@ begin
             
             // ADD and SUB
             if(cmd == 4 || cmd == 5) begin
-                data_in_c <= (add_lut[pass_cnt][4] << 7) | (add_lut[pass_cnt][3] << bit_cnt);
-                //mask_c <= 8'h80 | 1 << bit_cnt;
-                
-                $display("data_in_c: %b", data_in_c);
-                $display("mask_c: %b", mask_c);
-                
-                $display("bit_count: %d", bit_cnt);
-                $display("pass: %d", pass_cnt);
+                if(cmd == 4)
+                    data_in_c <= (add_lut[pass_cnt][4] << 7) | (add_lut[pass_cnt][3] << bit_cnt);
+                else
+                    data_in_c <= (sub_lut[pass_cnt][4] << 7) | (sub_lut[pass_cnt][3] << bit_cnt);
                 
                 if(pass_cnt == 4) begin
                   pass_cnt <= 0;

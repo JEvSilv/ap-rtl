@@ -27,15 +27,16 @@ module CAM #(
   output [WORD_SIZE-1:0] doutb
 );
 
- wire clka;
- assign clka = CLK100MHZ;
- wire [WORD_SIZE-1:0] cell_doutb_ctrl [CELL_QUANT-1:0];
- wire  [CELL_QUANT-1:0] cell_wea_ctrl;
+wire clka;
+assign clka = CLK100MHZ;
+wire [WORD_SIZE-1:0] cell_doutb_ctrl [CELL_QUANT-1:0];
+wire [CELL_QUANT-1:0] wea_addr;
+wire [CELL_QUANT-1:0] cell_wea_ctrl;
  
- assign doutb = cell_doutb_ctrl[addr_in];
+assign doutb = cell_doutb_ctrl[addr_in];
  
- genvar g;
- generate
+genvar g;
+generate
     for(g = 0; g < CELL_QUANT; g=g+1) begin
             CAM_CELL _cam_cell(
             internal_col_in,
@@ -49,32 +50,11 @@ module CAM #(
             cell_doutb_ctrl[g]
             );
      end
- endgenerate
-
-wire [CELL_QUANT-1:0] wea_addr;
+endgenerate
 
 assign wea_addr = wea ? 1 << addr_in : 0;
 assign cell_wea_ctrl = cam_mode ? cell_wea_ctrl_ap : wea_addr;
 
- /*
- // Maybe this could be implemented async
- integer i;
- always @(posedge clka) begin
-      if(rst) begin
-        cell_wea_ctrl <= 0;
-      end
-      else
-        if(!cam_mode) begin
-            if (wea) begin
-                cell_wea_ctrl <= 1 << addr_in;
-            end
-            else
-                cell_wea_ctrl <= 0;
-        end  else begin
-           cell_wea_ctrl <= cell_wea_ctrl_ap;
-        end 
- end
- */
 function integer clogb2;
   input integer depth;
       for (clogb2=0; depth>0; clogb2=clogb2+1)

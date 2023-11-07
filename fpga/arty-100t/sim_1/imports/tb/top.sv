@@ -174,7 +174,7 @@ module top #(
         
         for (int i = 0; i < CELL_QUANT; i++)
             if(random_data_c[i] == top.AP.cam_c.cell_doutb_ctrl[i])
-                $display("Pass[%d] = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]);
+                $display("Pass[%d] {%d OP %d} = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_a[i], random_data_b[i], random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]);
             else
                 $display("FAIL[%d] {%d OP %d} = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_a[i], random_data_b[i], random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]); $finish;
             

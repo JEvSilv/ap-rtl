@@ -34,11 +34,13 @@ wire [CELL_QUANT-1:0] wea_addr;
 wire [CELL_QUANT-1:0] cell_wea_ctrl;
  
 assign doutb = cell_doutb_ctrl[addr_in];
- 
+
+// Module_name #(.parameter_name(valor)) instance_name;
+// RAM_WIDTH
 genvar g;
 generate
     for(g = 0; g < CELL_QUANT; g=g+1) begin
-            CAM_CELL _cam_cell(
+            CAM_CELL #(.RAM_WIDTH(WORD_SIZE)) _cam_cell(
             internal_col_in,
             dina, 
             key, 

@@ -127,6 +127,7 @@ module top #(
         
         foreach(random_data_b[i])
             random_data_b[i] <= $urandom();
+        /*    
         if (cmd > 3) begin
             foreach(random_data_a[i])
                 random_data_a[i] <= $urandom() & 8'h7f;
@@ -134,7 +135,7 @@ module top #(
             foreach(random_data_b[i])
                 random_data_b[i] <= $urandom() & 8'h7f;
         end
-        
+        */
     endtask
     
     task check_random_fill(input delay);
@@ -173,7 +174,7 @@ module top #(
         #(delay * 1ns);
         
         for (int i = 0; i < CELL_QUANT; i++)
-            if(random_data_c[i] == top.AP.cam_c.cell_doutb_ctrl[i])
+            if(random_data_c[i] == (top.AP.cam_c.cell_doutb_ctrl[i] & 8'hff))
                 $display("Pass[%d] {%d OP %d} = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_a[i], random_data_b[i], random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]);
             else
                 $display("FAIL[%d] {%d OP %d} = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_a[i], random_data_b[i], random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]); $finish;

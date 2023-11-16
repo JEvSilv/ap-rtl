@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-
+// Change to RAM_WIDTH to WORD SIZE
 module CAM_CELL#(
    parameter RAM_WIDTH = 8,
    parameter RAM_ADDR_BITS = 1

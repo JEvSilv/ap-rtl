@@ -43,16 +43,19 @@ module AP_s #(
  assign clka = CLK100MHZ;
  reg  [WORD_SIZE-1:0] key_a;
  reg  [WORD_SIZE-1:0] key_b;
- reg  [WORD_SIZE-1:0] key_c;
+ // plus one bit for carry and borrow
+ reg  [WORD_SIZE:0] key_c;
  reg  [WORD_SIZE-1:0] mask_a;
  reg  [WORD_SIZE-1:0] mask_b;
- reg  [WORD_SIZE-1:0] mask_c;
+ // plus one bit for carry and borrow
+ reg  [WORD_SIZE:0] mask_c;
  wire [WORD_SIZE-1:0] data_out_a;
  wire [WORD_SIZE-1:0] data_out_b;
  wire [WORD_SIZE-1:0] data_out_c;
  reg [WORD_SIZE-1:0] data_in_a;
  reg [WORD_SIZE-1:0] data_in_b;
- reg [WORD_SIZE-1:0] data_in_c;
+ // plus one bit for carry and borrow
+ reg [WORD_SIZE:0] data_in_c; 
  reg [WORD_SIZE-1:0] ap_w_buffer;
  reg wea_a, wea_b, wea_c;
  
@@ -188,8 +191,9 @@ generate
         tags_b,
         data_out_b
     );
-    
-    CAM cam_c(
+
+    // Module_name #(.parameter_name(valor)) instance_name;    
+    CAM #(.WORD_SIZE(WORD_SIZE+1)) cam_c(
         addr_in,
         cell_wea_ctrl_ap_c,
         sel_internal_col,
@@ -240,7 +244,7 @@ begin
           INIT: begin
             mask_a <= 1;
             mask_b <= 1;
-            mask_c <= 8'h80 | 1;
+            mask_c <= 9'h100 | 1; // assuming mask_c having 9 bits
             pass_cnt <= 0;
             bit_cnt <= 0;
             ap_state_irq <= 0;
@@ -262,15 +266,15 @@ begin
                     key_a <= (add_lut[pass_cnt][0] << bit_cnt);
                     key_b <= (add_lut[pass_cnt][1] << bit_cnt);
                     // Carry or borrow
-                    key_c <= (add_lut[pass_cnt][2] << 7);
+                    key_c <= (add_lut[pass_cnt][2] << 8);
                 end else begin
                     key_a <= (sub_lut[pass_cnt][0] << bit_cnt);
                     key_b <= (sub_lut[pass_cnt][1] << bit_cnt);
                     // Carry or borrow
-                    key_c <= (sub_lut[pass_cnt][2] << 7);
+                    key_c <= (sub_lut[pass_cnt][2] << 8);
                 end
                 
-                mask_c = 8'h80 | 1 << bit_cnt;
+                mask_c = 9'h100 | 1 << bit_cnt;
              end
              
              mask_a <= 1 << bit_cnt;
@@ -302,9 +306,9 @@ begin
             // ADD and SUB
             if(cmd == 4 || cmd == 5) begin
                 if(cmd == 4)
-                    data_in_c <= (add_lut[pass_cnt][4] << 7) | (add_lut[pass_cnt][3] << bit_cnt);
+                    data_in_c <= (add_lut[pass_cnt][4] << 8) | (add_lut[pass_cnt][3] << bit_cnt);
                 else
-                    data_in_c <= (sub_lut[pass_cnt][4] << 7) | (sub_lut[pass_cnt][3] << bit_cnt);
+                    data_in_c <= (sub_lut[pass_cnt][4] << 8) | (sub_lut[pass_cnt][3] << bit_cnt);
                 
                 if(pass_cnt == 4) begin
                   pass_cnt <= 0;

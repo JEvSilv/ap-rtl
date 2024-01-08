@@ -33,6 +33,12 @@ wire [WORD_SIZE-1:0] cell_doutb_ctrl [CELL_QUANT-1:0];
 wire [CELL_QUANT-1:0] wea_addr;
 wire [CELL_QUANT-1:0] cell_wea_ctrl;
  
+wire [WORD_SIZE-1:0] masked_key;
+wire [WORD_SIZE-1:0] masked_dina;
+
+assign masked_key  = key & mask;
+assign masked_dina = dina & mask;
+
 assign doutb = cell_doutb_ctrl[addr_in];
 
 // Module_name #(.parameter_name(valor)) instance_name;
@@ -42,8 +48,10 @@ generate
     for(g = 0; g < CELL_QUANT; g=g+1) begin
             CAM_CELL #(.RAM_WIDTH(WORD_SIZE)) _cam_cell(
             internal_col_in,
-            dina, 
-            key, 
+            //dina,
+            masked_dina, 
+            //key, 
+            masked_key,
             mask,
             rst, 
             clka, 

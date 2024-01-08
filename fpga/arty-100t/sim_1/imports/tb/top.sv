@@ -12,10 +12,9 @@ module top #(
 	ap_if _ap_if();
 	
 	parameter OR=0, XOR=1, AND=2, NOT=3, ADD=4, SUB=5, MULT=6;
-	assign cmd_global_op = ADD;
+	assign cmd_global_op = MULT;
 	
-	
-	AP_s AP (
+	AP_s #(.WORD_SIZE(WORD_SIZE)) AP (
        .addr_in(_ap_if.addr),
        .data_in(_ap_if.data),         
        .rst(_ap_if.rst),
@@ -127,15 +126,15 @@ module top #(
         
         foreach(random_data_b[i])
             random_data_b[i] <= $urandom();
-        /*    
-        if (cmd > 3) begin
+            
+        if (cmd == 6) begin
             foreach(random_data_a[i])
-                random_data_a[i] <= $urandom() & 8'h7f;
+                random_data_a[i] <= $urandom() & 8'hf; // 2; //$urandom() & 8'hf;
             
             foreach(random_data_b[i])
-                random_data_b[i] <= $urandom() & 8'h7f;
+                random_data_b[i] <= $urandom() & 8'hf; //2; //$urandom() & 8'hf;
         end
-        */
+        
     endtask
     
     task check_random_fill(input delay);
@@ -156,6 +155,7 @@ module top #(
             3: $display("NOT OPERATION");
             4: $display("ADD OPERATION");
             5: $display("SUB OPERATION");
+            6: $display("MULT OPERATION");
             default: $display("OR OPERATION");
         endcase
         // switch with cmd
@@ -168,6 +168,7 @@ module top #(
                 3: random_data_c[i] <= ~random_data_a[i];
                 4: random_data_c[i] <= random_data_a[i] + random_data_b[i];
                 5: random_data_c[i] <= random_data_a[i] - random_data_b[i];
+                6: random_data_c[i] <= random_data_a[i] * random_data_b[i];
                 default: random_data_c[i] <= random_data_a[i] | random_data_b[i];
             endcase
         end

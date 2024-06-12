@@ -8,22 +8,24 @@ module top #(
     logic [WORD_SIZE-1:0] random_data_a [CELL_QUANT-1:0];
 	logic [WORD_SIZE-1:0] random_data_b [CELL_QUANT-1:0];
 	logic [WORD_SIZE-1:0] random_data_c [CELL_QUANT-1:0];
+	
 	logic [2:0] cmd_global_op;
 	ap_if _ap_if();
 	
 	parameter OR=0, XOR=1, AND=2, NOT=3, ADD=4, SUB=5, MULT=6;
-	assign cmd_global_op = MULT;
+	assign cmd_global_op = ADD;
 	
 	AP_s #(.WORD_SIZE(WORD_SIZE)) AP (
        .addr_in(_ap_if.addr),
        .data_in(_ap_if.data),         
        .rst(_ap_if.rst),
+       .op_direction(_ap_if.op_direction),
        .ap_mode(_ap_if.ap_mode),
        .cmd(_ap_if.cmd),
        .sel_col(_ap_if.sel_col),
        .sel_internal_col(_ap_if.sel_internal_col),
-       .CLK100MHZ(_ap_if.clk),
-       //.CLK100MHZ(CLK100MHZ),                       
+       //.CLK100MHZ(_ap_if.clk),
+       .CLK100MHZ(CLK100MHZ),                       
        .write_en(_ap_if.write_en),
        .read_en(_ap_if.read_en),                           
        .data_out(_ap_if.data_out),
@@ -33,7 +35,11 @@ module top #(
     always @ (posedge _ap_if.ap_state_irq) begin
        _ap_if.ap_mode <= 0;
        #2
-       check_results(10, cmd_global_op);
+       if (_ap_if.op_direction == 0) begin
+            check_results_vertical(10, cmd_global_op);
+       end else begin
+            check_results_horizontal(10, cmd_global_op);
+       end
        $finish;
     end
                
@@ -49,6 +55,7 @@ module top #(
 		_ap_if.sel_internal_col <= 0;
 		_ap_if.rst <= 1;
 		_ap_if.read_en <= 0;
+		_ap_if.op_direction <= 0;
 		end
 		
 		#(interval * 1ns); begin
@@ -64,7 +71,8 @@ module top #(
 		// Changing back to internal col zero - changing name to bank
 		#(interval * 1ns); begin
 		_ap_if.sel_internal_col <= 0;
-		_ap_if.rst <= 0;             
+		_ap_if.op_direction <= 0;
+		_ap_if.rst <= 0;
 		end
     endtask
 	
@@ -137,6 +145,21 @@ module top #(
         
     endtask
     
+    task generate_list_w_value(input int value_a, input int value_b, input int value_c);
+            foreach(random_data_a[i])
+                random_data_a[i] <= value_a;
+            
+            //foreach(random_data_b[i])
+            //    random_data_b[i] <= value_b;
+            
+            for (int i = 0; i < CELL_QUANT-4; i++) begin
+                random_data_b[i] <= i % 3;
+            end
+            
+            foreach(random_data_c[i])
+                random_data_c[i] <= value_c;
+    endtask
+    
     task check_random_fill(input delay);
         #(delay * 1ns);
         $display("Check random fill");
@@ -146,7 +169,7 @@ module top #(
     endtask
     
     
-    task check_results(input int delay, input [2:0] cmd);
+    task check_results_vertical(input int delay, input [2:0] cmd);
         
         case(cmd)
             0: $display("OR OPERATION");
@@ -182,11 +205,50 @@ module top #(
             
     endtask;
     
+    task check_results_horizontal(input int delay, input [2:0] cmd);
+            
+            case(cmd)
+                0: $display("OR OPERATION");
+                1: $display("XOR OPERATION");
+                2: $display("AND OPERATION");
+                3: $display("NOT OPERATION");
+                4: $display("ADD OPERATION");
+                5: $display("SUB OPERATION");
+                6: $display("MULT OPERATION");
+                default: $display("OR OPERATION");
+            endcase
+            // switch with cmd
+            #(delay * 1ns);
+            for (int i = 0; i < CELL_QUANT; i++) begin
+                case(cmd)
+                    0: random_data_c[i] <= random_data_a[i] | random_data_b[i];
+                    1: random_data_c[i] <= random_data_a[i] ^ random_data_b[i];
+                    2: random_data_c[i] <= random_data_a[i] & random_data_b[i];
+                    3: random_data_c[i] <= ~random_data_a[i];
+                    4: random_data_c[i] <= random_data_a[i] + random_data_b[i];
+                    5: random_data_c[i] <= random_data_a[i] - random_data_b[i];
+                    6: random_data_c[i] <= random_data_a[i] * random_data_b[i];
+                    default: random_data_c[i] <= random_data_a[i] | random_data_b[i];
+                endcase
+            end
+            #(delay * 1ns);
+            
+            for (int i = 0; i < CELL_QUANT; i++)
+                if(random_data_c[i] == (top.AP.cam_c.cell_doutb_ctrl[i] & 8'hff))
+                    $display("Pass[%d] {%d OP %d} = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_a[i], random_data_b[i], random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]);
+                else
+                    $display("FAIL[%d] {%d OP %d} = random_data_c: %d | cell_doutb_ctrl: %d", i, random_data_a[i], random_data_b[i], random_data_c[i], top.AP.cam_c.cell_doutb_ctrl[i]); $finish;
+                
+        endtask;
+    
     task sim(input int interval);
         #(interval * 1ns);
         ap_reset(10);
         #(interval * 1ns);
-        generate_random_list(cmd_global_op);
+        //generate_random_list(cmd_global_op);
+        
+        // Testing horizontal operation
+        generate_list_w_value(1,2,0);
         
         //ap_write(delay,  sel_col, sel_internal_col, addr, data);
         /*
@@ -204,6 +266,10 @@ module top #(
         fill_ap_random(10, 0, 0, random_data_a);
         #(interval * 1ns);
         check_random_fill(0);
+        #(interval * 1ns);
+        // Turning to horizontal computation
+        _ap_if.sel_col <= 0;
+        _ap_if.op_direction <= 1;
         #(interval * 1ns);
         ap_computing(0, cmd_global_op);
         /*

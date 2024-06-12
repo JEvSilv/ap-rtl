@@ -15,6 +15,7 @@ interface ap_if #(
     logic clk;
     logic rst;
     logic ap_mode;
+    logic op_direction;
     logic write_en;
     logic read_en;
     logic [WORD_SIZE-1:0] data_out;

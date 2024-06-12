@@ -29,6 +29,7 @@ module AP_s #(
   input [WORD_SIZE-1:0] data_in,         
   input rst,
   input ap_mode,
+  input op_direction, // 0 -> vertical | 1 -> horizontal
   input [2:0] cmd,
   input [1:0] sel_col,
   input sel_internal_col,
@@ -54,7 +55,7 @@ module AP_s #(
  reg  [WORD_SIZE:0] mask_c;
  wire [WORD_SIZE-1:0] data_out_a;
  wire [WORD_SIZE-1:0] data_out_b;
- wire [WORD_SIZE-1:0] data_out_c;
+ wire [WORD_SIZE:0] data_out_c;
  reg [WORD_SIZE-1:0] data_in_a;
  reg [WORD_SIZE-1:0] data_in_b;
  // plus one bit for carry and borrow
@@ -192,8 +193,11 @@ generate
         sel_internal_col,
         cam_mode_a,
         data_in_a,
+        op_direction,
         key_a,
+        key_b,
         mask_a,
+        mask_b,
         CLK100MHZ,
         rst,
         wea_abc[0],
@@ -207,8 +211,11 @@ generate
         sel_internal_col,
         cam_mode_b,
         data_in_b,
+        op_direction,
         key_b,
+        key_a,
         mask_b,
+        mask_a,
         CLK100MHZ,
         rst,
         wea_abc[1],
@@ -223,7 +230,10 @@ generate
         sel_internal_col,
         cam_mode_c,
         data_in_c,
+        op_direction,
         key_c,
+        key_c,
+        mask_c,
         mask_c,
         CLK100MHZ,
         rst,
@@ -321,18 +331,36 @@ begin
              end
              
              cell_wea_ctrl_ap_c <= 0;
+             $display("cell_wea_ctrl_ap_c: %b", cell_wea_ctrl_ap_c);
           end
           WRITE: begin
             $display("@WRITE");
             $display("Key (A,B,C): %b %b %b", key_a, key_b, key_c);
             $display("Mask (A,B,C): %b %b %b", mask_a, mask_b, mask_c);
             $display("data_in_c: %b", data_in_c);
+            $display("tags_b: %b", tags_b);
+            $display("tags_c: %b", tags_c);
             $display("mask_c: %b", mask_c);
             $display("bit_count: %d", bit_cnt);
             $display("bit_count_mult: %d", bit_cnt_mult);
             $display("pass: %d\n", pass_cnt);
             
-            cell_wea_ctrl_ap_c <= tags_a & tags_b & tags_c; // Test
+            // Alterar para 2D - horizontal
+            if(op_direction == 1) begin
+                if(sel_col == 0) begin    
+                    cell_wea_ctrl_ap_c <= ((tags_a >> 1) & tags_a) & tags_c;
+                end
+                if(sel_col == 1) begin    
+                    cell_wea_ctrl_ap_c <= ((tags_b >> 1) & tags_b) & tags_c;
+                end
+            end
+            
+            // Alterar para 2D - vertical
+            if(op_direction == 0) begin
+                cell_wea_ctrl_ap_c <= tags_a & tags_b & tags_c;
+            end
+            
+            //cell_wea_ctrl_ap_c <= tags_a & tags_b & tags_c; // Test
             pass_cnt <= pass_cnt + 1;
             
             // Logical operations    

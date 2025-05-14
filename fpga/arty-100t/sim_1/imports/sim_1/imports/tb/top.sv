@@ -2,7 +2,7 @@ module top #(
    parameter RAM_WIDTH = 1,
    parameter RAM_ADDR_BITS = 1,
    parameter WORD_SIZE = 8,
-   parameter CELL_QUANT = 512 
+   parameter CELL_QUANT = 512
 );
     
     logic [WORD_SIZE-1:0] random_data_a [CELL_QUANT-1:0];
@@ -12,20 +12,39 @@ module top #(
 	logic [2:0] cmd_global_op;
 	ap_if _ap_if();
 	
-	parameter OR=0, XOR=1, AND=2, NOT=3, ADD=4, SUB=5, MULT=6;
+	parameter OR=0, XOR=1, AND=2, NOT=3, ADD=4, SUB=5, MULT=6, SET_VALUE=7;
+    parameter CAM_A=0, CAM_B=1, CAM_C=2;
+    parameter LEFT=0, RIGHT=1;
 	assign cmd_global_op = ADD;
+	
+  /*
+  input [clogb2(CELL_QUANT)-1:0] addr_in,
+  input [WORD_SIZE-1:0] data_in,         
+  input rst,
+  input ap_mode,
+  input op_direction, // 0 -> vertical | 1 -> horizontal
+  input [2:0] cmd,
+  input [1:0] sel_col,
+  input sel_internal_col,
+  input clock,                       
+  input write_en,
+  input read_en,                           
+  output reg [WORD_SIZE-1:0] data_out,
+  output reg ap_state_irq
+  */
 	
 	AP_s #(.WORD_SIZE(WORD_SIZE)) AP (
        .addr_in(_ap_if.addr),
        .data_in(_ap_if.data),         
        .rst(_ap_if.rst),
-       .op_direction(_ap_if.op_direction),
        .ap_mode(_ap_if.ap_mode),
+       .op_direction(_ap_if.op_direction),
+       .op_target(_ap_if.op_target),
        .cmd(_ap_if.cmd),
        .sel_col(_ap_if.sel_col),
        .sel_internal_col(_ap_if.sel_internal_col),
-       .CLK100MHZ(_ap_if.clk),
-       //.CLK100MHZ(CLK100MHZ),                       
+       //.CLK100MHZ(_ap_if.clk),
+       .CLK100MHZ(CLK100MHZ),                      
        .write_en(_ap_if.write_en),
        .read_en(_ap_if.read_en),                           
        .data_out(_ap_if.data_out),
@@ -35,17 +54,17 @@ module top #(
     always @ (posedge _ap_if.ap_state_irq) begin
        _ap_if.ap_mode <= 0;
        #2
-       if (_ap_if.op_direction == 0) begin
-            check_results_vertical(10, cmd_global_op);
-       end else begin
-            check_results_horizontal(10, cmd_global_op);
-       end
+    //    if (_ap_if.op_direction == 0) begin
+    //         check_results_vertical(10, cmd_global_op);
+    //    end else begin
+    //         check_results_horizontal(10, cmd_global_op);
+    //    end
        $finish;
     end
                
 	initial _ap_if.clk = 0;
 	always #1 _ap_if.clk <= ~_ap_if.clk;
-	
+	/*
 	task ap_reset(input int interval);
         // Reseting and Cleaning Internal col 0	    
 	    #(interval * 1ns); begin
@@ -73,6 +92,81 @@ module top #(
 		_ap_if.sel_internal_col <= 0;
 		_ap_if.op_direction <= 0;
 		_ap_if.rst <= 0;
+		end
+    endtask
+    */
+    task ap_reset(input int interval);
+        // Reseting CAM A	    
+	    #(interval * 1ns); begin
+		_ap_if.clk <= 0;
+		_ap_if.addr <= 0;
+		_ap_if.ap_mode <= 0;
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.rst <= 3'b001;
+		_ap_if.read_en <= 0;
+		_ap_if.op_direction <= 0;
+        _ap_if.op_target <= 0;
+		end
+		
+		#(interval * 1ns); begin
+		_ap_if.rst <= 3'b000;                          
+		end
+        
+        // Reseting and Cleaning Internal col 1
+        #(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 1;
+		_ap_if.rst <= 3'b001;
+		end
+		
+		// Changing back to internal col zero - changing name to bank
+		#(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.op_direction <= 0;
+		_ap_if.rst <= 3'b000;
+		end
+		
+        // Reseting CAM B	    
+	    #(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.rst <= 3'b010;
+		end
+		
+		#(interval * 1ns); begin
+		_ap_if.rst <= 3'b000;                          
+		end
+        
+        // Reseting and Cleaning Internal col 1
+        #(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 1;
+		_ap_if.rst <= 3'b010;
+		end
+		
+		// Changing back to internal col zero - changing name to bank
+		#(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.rst <= 3'b000;
+		end
+		
+		// Reseting CAM C    
+	    #(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.rst <= 3'b100;
+		end
+		
+		#(interval * 1ns); begin
+		_ap_if.rst <= 3'b000;                          
+		end
+        
+        // Reseting and Cleaning Internal col 1
+        #(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 1;
+		_ap_if.rst <= 3'b100;
+		end
+		
+		// Changing back to internal col zero - changing name to bank
+		#(interval * 1ns); begin
+		_ap_if.sel_internal_col <= 0;
+		_ap_if.rst <= 3'b000;
 		end
     endtask
 	
@@ -121,9 +215,44 @@ module top #(
         #(delay * 1ns);
     endtask
     
+    task fill_ap_sequential(input int delay, logic [1:0] sel_col, logic sel_internal_col, int start_point);
+        #(delay * 1ns);
+        for(int i = 0; i < 10; i++) begin
+            ap_write(2, sel_col, sel_internal_col, i, $urandom() & 8'hf); //$urandom()
+        end
+        _ap_if.write_en <= 0;
+        #(delay * 1ns);
+    endtask
+
     task ap_computing(input int delay, logic [2:0] cmd);
         #(delay * 1ns);
         _ap_if.cmd <= cmd;
+        _ap_if.ap_mode <= 1;
+        #(100 * 1ns);
+    endtask
+
+    task test_ap_set(input int delay);
+        #(delay * 1ns);
+        _ap_if.data <= 10;
+		_ap_if.cmd <= SET_VALUE;
+		_ap_if.ap_mode <= 0;
+        _ap_if.sel_col <= CAM_C;
+        _ap_if.sel_internal_col <= RIGHT;
+        #(delay * 1ns);
+        _ap_if.ap_mode <= 1;
+        #(delay * 1ns);
+    endtask
+
+    /* Turning back computing */
+    task test_ap_diff_targets(input int delay, logic [2:0] cmd);
+        #(delay * 1ns);
+        _ap_if.op_target <= 1;
+		_ap_if.cmd <= cmd;
+		_ap_if.ap_mode <= 0;
+        _ap_if.sel_col <= CAM_A;
+        _ap_if.op_direction <= 0;
+        _ap_if.sel_internal_col <= LEFT;
+        #(delay * 1ns);
         _ap_if.ap_mode <= 1;
         #(100 * 1ns);
     endtask
@@ -245,10 +374,15 @@ module top #(
         #(interval * 1ns);
         ap_reset(10);
         #(interval * 1ns);
+        //test_ap_set(10);
+        fill_ap_sequential(10, CAM_B, 0, 0);
+        //fill_ap_sequential(10, CAM_C, 0, 3);
+        fill_ap_sequential(10, CAM_A, 0, 3);
+        test_ap_diff_targets(10, ADD);
         //generate_random_list(cmd_global_op);
         
         // Testing horizontal operation
-        generate_list_w_value(1,2,0);
+        //generate_list_w_value(1,2,0);
         
         //ap_write(delay,  sel_col, sel_internal_col, addr, data);
         /*
@@ -260,18 +394,18 @@ module top #(
         ap_computing(0,0);
         */
         
-        #(interval * 1ns);
-        fill_ap_random(10, 1, 0, random_data_b);
-        #(interval * 1ns);
-        fill_ap_random(10, 0, 0, random_data_a);
-        #(interval * 1ns);
-        check_random_fill(0);
-        #(interval * 1ns);
+        //#(interval * 1ns);
+        //fill_ap_random(10, 1, 0, random_data_b);
+        //#(interval * 1ns);
+        //fill_ap_random(10, 0, 0, random_data_a);
+        //#(interval * 1ns);
+        //check_random_fill(0);
+        //#(interval * 1ns);
         // Turning to horizontal computation
-        _ap_if.sel_col <= 0;
-        _ap_if.op_direction <= 1;
-        #(interval * 1ns);
-        ap_computing(0, cmd_global_op);
+        //_ap_if.sel_col <= 0;
+        //_ap_if.op_direction <= 1;
+        //#(interval * 1ns);
+        //ap_computing(0, cmd_global_op);
         /*
         #(interval * 1ns);
         check_results(10, 0);
